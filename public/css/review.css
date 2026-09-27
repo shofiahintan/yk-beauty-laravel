@@ -1,0 +1,81 @@
+/* ===== Modal Ulasan Wajib (partials/review-required-modal) ===== */
+
+.yk-review-overlay{
+  position:fixed; inset:0; z-index:9998;
+  background:rgba(46,19,25,0.55);
+  display:flex; align-items:center; justify-content:center;
+  padding:20px;
+  opacity:0; pointer-events:none;
+  transition:opacity .2s ease;
+}
+.yk-review-overlay.open{ opacity:1; pointer-events:auto; }
+
+.yk-review-modal{
+  background:#fff; border-radius:18px; width:100%; max-width:420px;
+  padding:26px 24px 22px; position:relative;
+  box-shadow:0 24px 60px rgba(46,19,25,0.35);
+  transform:translateY(10px); transition:transform .2s ease;
+}
+.yk-review-overlay.open .yk-review-modal{ transform:translateY(0); }
+
+.yk-review-close{
+  position:absolute; top:14px; right:14px; width:30px; height:30px;
+  border:none; background:var(--pink-50); border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--ink-soft);
+}
+.yk-review-close:hover{ background:var(--pink-100); color:var(--maroon-900); }
+
+.yk-review-eyebrow{
+  font-size:12px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--maroon-accent); font-weight:600; margin:0 0 4px;
+}
+.yk-review-modal h3{ margin:0 0 16px; font-size:19px; color:var(--maroon-900); }
+
+.yk-review-product{
+  display:flex; align-items:center; gap:12px;
+  background:var(--pink-50); border-radius:12px; padding:10px 12px; margin-bottom:18px;
+}
+.yk-review-product img{
+  width:52px; height:52px; border-radius:8px; object-fit:cover; flex-shrink:0;
+}
+.yk-review-product-nama{ font-weight:600; color:var(--ink); font-size:14px; line-height:1.3; }
+.yk-review-product-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+
+.yk-review-stars-label{ font-size:13px; font-weight:600; color:var(--ink); margin-bottom:8px; }
+.yk-review-stars{ display:flex; gap:6px; margin-bottom:16px; }
+.yk-review-stars button{
+  background:none; border:none; cursor:pointer; padding:2px; line-height:1;
+  font-size:30px; color:var(--pink-200); transition:color .12s ease, transform .12s ease;
+}
+.yk-review-stars button.active,
+.yk-review-stars button:hover,
+.yk-review-stars button:hover ~ button{ color:var(--pink-200); }
+.yk-review-stars button.filled{ color:#E8A33D; }
+.yk-review-stars button:hover{ transform:scale(1.12); }
+
+.yk-review-modal textarea{
+  width:100%; border:1px solid var(--pink-200); border-radius:10px; padding:10px 12px;
+  font-family:inherit; font-size:13.5px; color:var(--ink); resize:vertical; min-height:80px;
+  box-sizing:border-box;
+}
+.yk-review-modal textarea:focus{ outline:none; border-color:var(--maroon-accent); }
+
+.yk-review-error{ color:#c0392b; font-size:12.5px; margin:8px 0 0; min-height:16px; }
+
+.yk-review-modal .btn{ width:100%; margin-top:16px; }
+.yk-review-modal .btn:disabled{ opacity:.6; cursor:not-allowed; }
+
+/* ===== Tombol "Beri Ulasan" di halaman /pesanan ===== */
+
+.pesanan-item-row{ position:relative; }
+.pesanan-item-review-btn{
+  margin-top:8px; padding:6px 14px; font-size:12.5px; font-weight:600;
+  border:1px solid var(--maroon-900); color:var(--maroon-900); background:#fff;
+  border-radius:999px; cursor:pointer; align-self:flex-start;
+}
+.pesanan-item-review-btn:hover{ background:var(--maroon-900); color:#fff; }
+.pesanan-item-reviewed-badge{
+  margin-top:8px; font-size:12.5px; color:#3d8b5f; font-weight:600;
+  display:inline-flex; align-items:center; gap:4px;
+}

@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+[x-cloak] { display: none !important; }
+
+/* ---------- Komponen form Owner Panel ---------- */
+@layer components {
+    .o-label   { @apply block text-[12.5px] font-medium text-ink-900 mb-1.5; }
+    .o-hint    { @apply text-[11.5px] text-ink-soft mt-1.5; }
+    .o-input   { @apply w-full h-11 rounded-xl border border-pink-200 bg-white px-3.5 text-[13.5px] text-ink-900 placeholder:text-ink-soft/70 transition focus:border-maroon-700 focus:ring-2 focus:ring-maroon-700/20; }
+    .o-textarea { @apply w-full rounded-xl border border-pink-200 bg-white px-3.5 py-2.5 text-[13.5px] leading-relaxed text-ink-900 placeholder:text-ink-soft/70 transition focus:border-maroon-700 focus:ring-2 focus:ring-maroon-700/20; }
+    .o-section { @apply flex items-center gap-3 text-[13px] font-semibold text-maroon-900 mb-3; }
+    .o-section::after { content: ''; @apply h-px flex-1 bg-pink-100; }
+    .o-btn-primary { @apply inline-flex h-11 items-center justify-center rounded-xl bg-maroon-900 px-6 text-[13.5px] font-medium text-white transition hover:bg-maroon-800 focus:outline-none focus:ring-2 focus:ring-maroon-700/40; }
+    .o-btn-ghost   { @apply inline-flex h-11 items-center justify-center rounded-xl border border-pink-200 bg-white px-5 text-[13.5px] font-medium text-ink-900 transition hover:bg-pink-50; }
+    .o-btn-soft    { @apply inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-xl border border-pink-200 bg-white px-4 text-[13px] font-medium text-maroon-800 transition hover:bg-pink-50; }
+}
