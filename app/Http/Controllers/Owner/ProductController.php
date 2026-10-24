@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Owner;
 
 use App\Http\Controllers\Controller;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -69,7 +71,7 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        $product->load(['variants', 'images']);
+        $product->load(['variants.images', 'images']);
 
         return response()->json([
             'id'            => $product->id,
@@ -87,7 +89,14 @@ class ProductController extends Controller
             'is_active'     => $product->is_active,
             'image'         => $product->image,
             'image_url'     => asset($product->image),
-            'variants'      => $product->variants->pluck('label')->values(),
+            'variants'      => $product->variants->map(fn ($v) => [
+                'id'     => $v->id,
+                'label'  => $v->label,
+                'images' => $v->images->map(fn ($img) => [
+                    'id'  => $img->id,
+                    'url' => asset($img->path),
+                ])->values(),
+            ])->values(),
             'gallery'       => $product->images->map(fn ($img) => [
                 'id'  => $img->id,
                 'url' => asset($img->path),
@@ -97,21 +106,22 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
-        $data = $this->validateData($request, true);
+        $data = $this->validateData($request, true, $product);
 
         $product->fill($data);
         $product->is_active = $request->boolean('is_active', true);
 
         if ($request->hasFile('image')) {
-            $this->deleteImageFile($product->image);
+            $oldImage = $product->image;
             $product->image = $this->storeImage($request->file('image'));
+            $this->safeDeleteImageFile($oldImage, null, $product->id);
         }
 
         $product->save();
 
         $this->syncVariants($product, $request);
+        $this->removeGalleryImages($product, $request);
         $this->syncGallery($product, $request);
-        $this->removeGalleryImages($request);
 
         return redirect()->route('owner.produk.index')->with('status', 'Produk "'.$product->nama.'" berhasil diperbarui.');
     }
@@ -120,12 +130,18 @@ class ProductController extends Controller
     {
         $nama = $product->nama;
 
-        foreach ($product->images as $img) {
-            $this->deleteImageFile($img->path);
+        // Ambil semua foto galeri umum & foto varian produk ini
+        $images = ProductImage::where('product_id', $product->id)->get();
+        foreach ($images as $img) {
+            $path = $img->path;
+            $img->delete();
+            $this->safeDeleteImageFile($path);
         }
-        $this->deleteImageFile($product->image);
 
+        $mainImage = $product->image;
+        $product->variants()->delete();
         $product->delete();
+        $this->safeDeleteImageFile($mainImage);
 
         return redirect()->route('owner.produk.index')->with('status', 'Produk "'.$nama.'" berhasil dihapus.');
     }
@@ -137,24 +153,63 @@ class ProductController extends Controller
         return back()->with('status', 'Status produk "'.$product->nama.'" diubah menjadi '.($product->is_active ? 'Aktif' : 'Nonaktif').'.');
     }
 
-    private function validateData(Request $request, bool $isUpdate): array
+    private function validateData(Request $request, bool $isUpdate, ?Product $product = null): array
     {
         $validated = $request->validate([
-            'nama'          => ['required', 'string', 'max:255'],
-            'brand'         => ['required', 'string', 'max:100'],
-            'kategori'      => ['required', 'string', 'max:100'],
-            'harga_normal'  => ['required', 'integer', 'min:1'],
-            'diskon_persen' => ['nullable', 'integer', 'min:0', 'max:90'],
-            'badge'         => ['nullable', 'string', 'max:50'],
-            'badge_class'   => ['nullable', 'string', 'max:50'],
-            'deskripsi'     => ['nullable', 'string'],
-            'stok'          => ['required', 'integer', 'min:0'],
-            'image'         => [$isUpdate ? 'nullable' : 'required', 'image', 'max:2048'],
-            'varian'        => ['nullable', 'array'],
-            'varian.*'      => ['nullable', 'string', 'max:100'],
-            'galeri'        => ['nullable', 'array'],
-            'galeri.*'      => ['image', 'max:2048'],
+            'nama'                 => ['required', 'string', 'max:255'],
+            'brand'                => ['required', 'string', 'max:100'],
+            'kategori'             => ['required', 'string', 'max:100'],
+            'harga_normal'         => ['required', 'integer', 'min:1'],
+            'diskon_persen'        => ['nullable', 'integer', 'min:0', 'max:90'],
+            'badge'                => ['nullable', 'string', 'max:50'],
+            'badge_class'          => ['nullable', 'string', 'max:50'],
+            'deskripsi'            => ['nullable', 'string'],
+            'stok'                 => ['required', 'integer', 'min:0'],
+            'image'                => [$isUpdate ? 'nullable' : 'required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'galeri'               => ['nullable', 'array'],
+            'galeri.*'             => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'varian'               => ['nullable', 'array'],
+            'varian.*'             => ['nullable'],
+            'varian.*.id'          => ['nullable'],
+            'varian.*.label'       => ['nullable', 'string', 'max:100'],
+            'varian.*.foto'        => ['nullable', 'array'],
+            'varian.*.foto.*'      => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'varian_foto'          => ['nullable', 'array'],
+            'varian_foto.*.*'      => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'hapus_galeri'         => ['nullable', 'array'],
+            'hapus_galeri.*'       => ['integer'],
+            'hapus_foto_varian'    => ['nullable', 'array'],
+            'hapus_foto_varian.*'  => ['integer'],
+        ], [
+            'image.required'        => 'Foto utama produk wajib diunggah.',
+            'image.image'           => 'File foto utama harus berupa gambar.',
+            'image.mimes'           => 'Format foto utama harus JPG, JPEG, PNG, atau WEBP.',
+            'image.max'             => 'Ukuran foto utama maksimal 2 MB.',
+            'galeri.*.image'        => 'File foto galeri harus berupa gambar.',
+            'galeri.*.mimes'        => 'Format foto galeri harus JPG, JPEG, PNG, atau WEBP.',
+            'galeri.*.max'          => 'Ukuran foto galeri maksimal 2 MB per file.',
+            'varian.*.foto.*.image' => 'File foto varian harus berupa gambar.',
+            'varian.*.foto.*.mimes' => 'Format foto varian harus JPG, JPEG, PNG, atau WEBP.',
+            'varian.*.foto.*.max'   => 'Ukuran foto varian maksimal 2 MB per file.',
+            'varian_foto.*.*.image' => 'File foto varian harus berupa gambar.',
+            'varian_foto.*.*.mimes' => 'Format foto varian harus JPG, JPEG, PNG, atau WEBP.',
+            'varian_foto.*.*.max'   => 'Ukuran foto varian maksimal 2 MB per file.',
         ]);
+
+        // Validasi batas maksimal 8 foto galeri per produk (foto umum)
+        $existingGalleryCount = 0;
+        if ($product) {
+            $removeIds = $request->input('hapus_galeri', []);
+            $existingGalleryCount = $product->images()
+                ->whereNotIn('id', is_array($removeIds) ? $removeIds : [])
+                ->count();
+        }
+        $newGalleryCount = $request->hasFile('galeri') ? count($request->file('galeri')) : 0;
+        if (($existingGalleryCount + $newGalleryCount) > 8) {
+            throw ValidationException::withMessages([
+                'galeri' => 'Maksimal 8 foto galeri per produk.',
+            ]);
+        }
 
         $diskon = isset($validated['diskon_persen']) && $validated['diskon_persen'] !== '' ? (int) $validated['diskon_persen'] : null;
         $validated['diskon_persen'] = $diskon;
@@ -189,36 +244,170 @@ class ProductController extends Controller
         return $this->uploadDir.'/'.$filename;
     }
 
-    private function deleteImageFile(?string $path): void
+    /**
+     * Memeriksa apakah file gambar aman untuk dihapus dari filesystem.
+     * Tidak boleh dihapus jika path masih dirujuk oleh order_items (riwayat pesanan)
+     * atau masih dipakai oleh produk lain / product_images lain.
+     */
+    protected function canDeleteImageFile(?string $path, ?int $excludeProductImageId = null, ?int $excludeProductId = null): bool
     {
-        if ($path && str_starts_with($path, $this->uploadDir) && File::exists(public_path($path))) {
-            // Hanya hapus file yang memang di-upload lewat panel ini (folder uploadDir),
-            // biar gambar seed data lama (assets/images/*.png) gak ikut kehapus.
-            File::delete(public_path($path));
+        if (! $path || ! str_starts_with($path, $this->uploadDir)) {
+            // Jangan hapus aset seed data (mis. assets/images/produk/...)
+            return false;
+        }
+
+        // Cek apakah masih dirujuk riwayat pesanan (order_items)
+        if (OrderItem::where('image', $path)->exists()) {
+            return false;
+        }
+
+        // Cek apakah masih dipakai foto utama produk lain
+        $productQuery = Product::where('image', $path);
+        if ($excludeProductId) {
+            $productQuery->where('id', '!=', $excludeProductId);
+        }
+        if ($productQuery->exists()) {
+            return false;
+        }
+
+        // Cek apakah masih dipakai baris product_images lain
+        $imageQuery = ProductImage::where('path', $path);
+        if ($excludeProductImageId) {
+            $imageQuery->where('id', '!=', $excludeProductImageId);
+        }
+        if ($imageQuery->exists()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    protected function safeDeleteImageFile(?string $path, ?int $excludeProductImageId = null, ?int $excludeProductId = null): void
+    {
+        if ($this->canDeleteImageFile($path, $excludeProductImageId, $excludeProductId)) {
+            $fullPath = public_path($path);
+            if (File::exists($fullPath)) {
+                File::delete($fullPath);
+            }
         }
     }
 
-    // Varian di-submit sebagai daftar label lengkap tiap kali form disubmit (repeater di UI),
-    // jadi paling aman: hapus semua baris lama lalu buat ulang sesuai input terbaru.
+    /**
+     * Sinkronisasi varian berbasis ID.
+     * - Varian lama yang ada di-update (label dan urutan sort_order).
+     * - Varian baru dibuat.
+     * - Varian yang hilang dari input dihapus beserta seluruh foto dan file fisiknya (jika aman).
+     * - Upload foto baru per varian disimpan ke product_images dengan product_variant_id terisi.
+     */
     private function syncVariants(Product $product, Request $request): void
     {
-        if (! $request->has('varian')) {
-            return;
+        $rawVariants = $request->input('varian', []);
+        if (! is_array($rawVariants)) {
+            $rawVariants = [];
         }
 
-        $labels = array_values(array_filter(
-            $request->input('varian', []),
-            fn ($v) => trim((string) $v) !== ''
-        ));
+        $submitted = [];
+        foreach ($rawVariants as $index => $item) {
+            if (is_array($item)) {
+                $label = trim((string) ($item['label'] ?? ''));
+                $id = ! empty($item['id']) ? (int) $item['id'] : null;
+            } else {
+                $label = trim((string) $item);
+                $id = null;
+            }
 
-        $product->variants()->delete();
+            if ($label === '') {
+                continue;
+            }
 
-        foreach ($labels as $i => $label) {
-            ProductVariant::create([
-                'product_id' => $product->id,
-                'label' => trim($label),
-                'sort_order' => $i,
-            ]);
+            $submitted[] = [
+                'id'    => $id,
+                'label' => $label,
+                'index' => $index,
+            ];
+        }
+
+        $existingVariants = $product->variants()->get()->keyBy('id');
+        $submittedIds = array_filter(array_column($submitted, 'id'));
+
+        // 1. Hapus varian yang dihilangkan dari form beserta foto & file fisiknya
+        $variantsToDelete = $existingVariants->except($submittedIds);
+        foreach ($variantsToDelete as $varToDelete) {
+            $varImages = ProductImage::where('product_id', $product->id)
+                ->where('product_variant_id', $varToDelete->id)
+                ->get();
+
+            foreach ($varImages as $vImg) {
+                $path = $vImg->path;
+                $vImg->delete();
+                $this->safeDeleteImageFile($path);
+            }
+
+            $varToDelete->delete();
+        }
+
+        // 2. Hapus foto varian spesifik yang dicentang hapus lewat hapus_foto_varian[]
+        // Dibatasi HANYA pada product_id produk ini
+        $removeVariantImageIds = $request->input('hapus_foto_varian', []);
+        if (! empty($removeVariantImageIds) && is_array($removeVariantImageIds)) {
+            $imagesToDelete = ProductImage::where('product_id', $product->id)
+                ->whereNotNull('product_variant_id')
+                ->whereIn('id', $removeVariantImageIds)
+                ->get();
+
+            foreach ($imagesToDelete as $img) {
+                $path = $img->path;
+                $img->delete();
+                $this->safeDeleteImageFile($path);
+            }
+        }
+
+        // 3. Update varian yang sudah ada atau buat varian baru
+        $processedVariants = [];
+        foreach ($submitted as $order => $data) {
+            if ($data['id'] && isset($existingVariants[$data['id']])) {
+                $variant = $existingVariants[$data['id']];
+                $variant->label = $data['label'];
+                $variant->sort_order = $order;
+                $variant->save();
+            } else {
+                $variant = ProductVariant::create([
+                    'product_id' => $product->id,
+                    'label'      => $data['label'],
+                    'sort_order' => $order,
+                ]);
+            }
+            $processedVariants[$data['index']] = $variant;
+        }
+
+        // 4. Upload foto khusus varian
+        foreach ($submitted as $data) {
+            $index = $data['index'];
+            $variant = $processedVariants[$index] ?? null;
+            if (! $variant) {
+                continue;
+            }
+
+            $files = $request->file("varian.{$index}.foto")
+                ?? $request->file("varian_foto.{$index}")
+                ?? [];
+
+            if (! is_array($files)) {
+                $files = $files ? [$files] : [];
+            }
+
+            $lastSort = (int) ($variant->images()->max('sort_order') ?? -1);
+            foreach ($files as $fIndex => $file) {
+                if ($file && $file->isValid()) {
+                    $path = $this->storeImage($file);
+                    ProductImage::create([
+                        'product_id'         => $product->id,
+                        'product_variant_id' => $variant->id,
+                        'path'               => $path,
+                        'sort_order'         => $lastSort + 1 + $fIndex,
+                    ]);
+                }
+            }
         }
     }
 
@@ -231,30 +420,37 @@ class ProductController extends Controller
         $lastOrder = $product->images()->max('sort_order') ?? -1;
 
         foreach ($request->file('galeri') as $i => $file) {
-            $path = $this->storeImage($file);
-            ProductImage::create([
-                'product_id' => $product->id,
-                'product_variant_id' => null,
-                'path' => $path,
-                'sort_order' => $lastOrder + 1 + $i,
-            ]);
+            if ($file && $file->isValid()) {
+                $path = $this->storeImage($file);
+                ProductImage::create([
+                    'product_id'         => $product->id,
+                    'product_variant_id' => null,
+                    'path'               => $path,
+                    'sort_order'         => $lastOrder + 1 + $i,
+                ]);
+            }
         }
     }
 
     // Hapus foto galeri yang dicentang "hapus" di form edit (id dikirim lewat hapus_galeri[]).
-    private function removeGalleryImages(Request $request): void
+    // Dibatasi HANYA untuk product_id yang sedang diedit dan foto umum (bukan varian).
+    private function removeGalleryImages(Product $product, Request $request): void
     {
         $ids = $request->input('hapus_galeri', []);
 
-        if (empty($ids)) {
+        if (empty($ids) || ! is_array($ids)) {
             return;
         }
 
-        $images = ProductImage::whereIn('id', $ids)->get();
+        $images = ProductImage::where('product_id', $product->id)
+            ->whereNull('product_variant_id')
+            ->whereIn('id', $ids)
+            ->get();
 
         foreach ($images as $img) {
-            $this->deleteImageFile($img->path);
+            $path = $img->path;
             $img->delete();
+            $this->safeDeleteImageFile($path);
         }
     }
 }

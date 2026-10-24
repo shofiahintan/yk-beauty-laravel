@@ -47,6 +47,12 @@ class Product extends Model
             ->orderBy('sort_order');
     }
 
+    public function allImages(): HasMany
+    {
+        return $this->hasMany(ProductImage::class)
+            ->orderBy('sort_order');
+    }
+
     public function collections(): BelongsToMany
     {
         return $this->belongsToMany(Collection::class)->withPivot('sort_order');
@@ -206,7 +212,7 @@ class Product extends Model
                     'varian'        => $p->variants->isNotEmpty()
                         ? $p->variants->pluck('label')->values()
                         : null,
-                    'varianGaleri'  => $p->variants->isNotEmpty()
+                    'varianGaleri'  => ($p->variants->isNotEmpty() && $p->variants->some(fn ($v) => $v->images->isNotEmpty()))
                         ? $p->variants->mapWithKeys(fn ($v) => [$v->label => $v->images->map(fn ($img) => asset($img->path))->values()])
                         : null,
                     'ukuran'        => null,

@@ -195,16 +195,18 @@
                         <div class="min-w-0">
                             <label class="o-btn-soft">
                                 <span x-text="form.image_url ? 'Ganti foto' : 'Pilih foto'"></span>
-                                <input type="file" name="image" accept="image/*" class="sr-only o-modal-file" :required="mode === 'create'"
+                                <input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="sr-only o-modal-file" :required="mode === 'create'"
                                        @change="if ($event.target.files[0]) { form.image_url = URL.createObjectURL($event.target.files[0]); imageName = $event.target.files[0].name; }">
                             </label>
-                            <p class="o-hint truncate" x-text="imageName || (mode === 'edit' ? 'Kosongkan jika tidak ingin mengganti.' : 'JPG atau PNG, maksimal 2 MB.')"></p>
+                            <p class="o-hint truncate" x-text="imageName || (mode === 'edit' ? 'Kosongkan jika tidak ingin mengganti.' : 'JPG, PNG, atau WEBP, maksimal 2 MB.')"></p>
                         </div>
                     </div>
                 </div>
 
                 <div>
-                    <label class="o-label">Foto galeri <span class="font-normal text-ink-soft">(opsional)</span></label>
+                    <div class="flex items-center justify-between">
+                        <label class="o-label">Foto galeri <span class="font-normal text-ink-soft">(opsional, maks 8 foto)</span></label>
+                    </div>
                     <div class="flex flex-wrap items-center gap-2.5">
                         <template x-for="img in (form.gallery || [])" :key="img.id">
                             <button type="button" @click="toggleRemove(img.id)" :title="removeIds.includes(img.id) ? 'Batal hapus' : 'Klik untuk menghapus saat disimpan'"
@@ -221,12 +223,12 @@
                         <label class="o-btn-soft !h-16 !w-16 !p-0 flex-col !gap-0.5 border-dashed" title="Tambah foto galeri">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
                             <span class="text-[11px]">Tambah</span>
-                            <input type="file" name="galeri[]" accept="image/*" multiple class="sr-only o-modal-file" @change="galleryCount = $event.target.files.length">
+                            <input type="file" name="galeri[]" accept="image/jpeg,image/png,image/webp" multiple class="sr-only o-modal-file" @change="galleryCount = $event.target.files.length">
                         </label>
                     </div>
                     <p class="o-hint" x-show="galleryCount > 0" x-text="galleryCount + ' foto baru akan ditambahkan saat disimpan.'"></p>
                     <p class="o-hint" x-show="removeIds.length > 0" x-text="removeIds.length + ' foto ditandai untuk dihapus.'"></p>
-                    <p class="o-hint" x-show="galleryCount === 0 && removeIds.length === 0 && form.gallery && form.gallery.length">Klik foto untuk menandainya dihapus.</p>
+                    <p class="o-hint" x-show="galleryCount === 0 && removeIds.length === 0 && form.gallery && form.gallery.length">Klik foto untuk menandainya dihapus. Format JPG, PNG, WEBP, maks 2 MB.</p>
                 </div>
             </div>
         </section>
@@ -236,19 +238,58 @@
             <p class="o-section">Varian &amp; Label</p>
             <div class="space-y-4">
                 <div>
-                    <label class="o-label">Varian <span class="font-normal text-ink-soft">(opsional, mis. warna atau ukuran)</span></label>
-                    <div class="space-y-2">
-                        <template x-for="(v, i) in variants" :key="i">
-                            <div class="flex items-center gap-2">
-                                <input type="text" :name="'varian[' + i + ']'" x-model="variants[i]" placeholder="Nama varian" class="o-input !h-10">
-                                <button type="button" @click="variants.splice(i, 1)" title="Hapus varian"
-                                        class="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center text-ink-soft hover:bg-pink-50 hover:text-maroon-900">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                                </button>
+                    <label class="o-label">Varian <span class="font-normal text-ink-soft">(opsional, mis. shade, aroma, atau ukuran)</span></label>
+                    <div class="space-y-3">
+                        <template x-for="(v, i) in variants" :key="v._key || v.id || i">
+                            <div class="p-3.5 rounded-2xl border border-pink-100 bg-pink-50/50 space-y-3">
+                                <div class="flex items-center gap-2">
+                                    <input type="hidden" :name="'varian[' + i + '][id]'" :value="v.id || ''">
+                                    <input type="text" :name="'varian[' + i + '][label]'" x-model="v.label" placeholder="Nama varian (mis. Natural Glow, 50ml)" class="o-input !h-10 flex-1">
+                                    <button type="button" @click="variants.splice(i, 1)" title="Hapus varian"
+                                            class="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center text-ink-soft hover:bg-pink-100 hover:text-maroon-900 transition">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+
+                                {{-- Foto khusus varian --}}
+                                <div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        {{-- Foto yang sudah ada --}}
+                                        <template x-for="img in (v.images || [])" :key="img.id">
+                                            <button type="button" @click="toggleRemoveVariantPhoto(img.id)"
+                                                    :title="removeVariantImageIds.includes(img.id) ? 'Batal hapus foto ini' : 'Tandai hapus foto ini saat disimpan'"
+                                                    class="group relative h-12 w-12 overflow-hidden rounded-xl border border-pink-200">
+                                                <img :src="img.url" class="h-full w-full object-cover transition"
+                                                     :class="removeVariantImageIds.includes(img.id) ? 'opacity-30 grayscale' : ''" alt="">
+                                                <span class="absolute inset-0 flex items-center justify-center bg-maroon-900/0 text-white opacity-0 transition group-hover:bg-maroon-900/50 group-hover:opacity-100"
+                                                      :class="removeVariantImageIds.includes(img.id) ? '!opacity-100 !bg-maroon-900/60' : ''">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                                                </span>
+                                            </button>
+                                        </template>
+
+                                        {{-- Tombol upload foto varian --}}
+                                        <label class="o-btn-soft !h-12 !px-3 !py-1 !gap-1.5 border-dashed cursor-pointer">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                                            <span class="text-[11.5px] font-medium">+ Foto varian</span>
+                                            <input type="file" :name="'varian[' + i + '][foto][]'" accept="image/jpeg,image/png,image/webp" multiple class="sr-only o-modal-file"
+                                                   @change="v.newFileCount = $event.target.files.length">
+                                        </label>
+                                    </div>
+                                    <template x-if="v.newFileCount > 0">
+                                        <p class="text-[11px] text-ink-soft mt-1" x-text="v.newFileCount + ' foto baru akan ditambahkan untuk varian ini.'"></p>
+                                    </template>
+                                </div>
                             </div>
                         </template>
                     </div>
-                    <button type="button" @click="variants.push('')" class="o-btn-soft mt-2 border-dashed">+ Tambah varian</button>
+
+                    {{-- Hidden inputs untuk foto varian yang ditandai hapus --}}
+                    <template x-for="id in removeVariantImageIds" :key="'rmvar_' + id">
+                        <input type="hidden" name="hapus_foto_varian[]" :value="id">
+                    </template>
+
+                    <button type="button" @click="variants.push({ id: null, label: '', images: [], newFileCount: 0, _key: Date.now() + Math.random() })" class="o-btn-soft mt-2.5 border-dashed">+ Tambah varian</button>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -290,6 +331,7 @@ function produkPanel() {
         imageName: '',
         galleryCount: 0,
         removeIds: [],
+        removeVariantImageIds: [],
         form: { nama: '', brand: '', kategori: '', harga_normal: '', diskon_persen: '', stok: '', badge: '', badge_class: 'bg-pink-100 text-maroon-900', deskripsi: '', is_active: true, image_url: null, gallery: [] },
         init() {
             @if(request()->filled('cari') && $products->count() == 1)
@@ -314,6 +356,7 @@ function produkPanel() {
             this.imageName = '';
             this.galleryCount = 0;
             this.removeIds = [];
+            this.removeVariantImageIds = [];
             document.querySelectorAll('.o-modal-file').forEach(i => i.value = '');
         },
 
@@ -321,6 +364,12 @@ function produkPanel() {
             this.removeIds = this.removeIds.includes(id)
                 ? this.removeIds.filter(x => x !== id)
                 : [...this.removeIds, id];
+        },
+
+        toggleRemoveVariantPhoto(id) {
+            this.removeVariantImageIds = this.removeVariantImageIds.includes(id)
+                ? this.removeVariantImageIds.filter(x => x !== id)
+                : [...this.removeVariantImageIds, id];
         },
 
         openCreate() {
@@ -358,7 +407,15 @@ function produkPanel() {
                     badge: data.badge, badge_class: data.badge_class || 'bg-pink-100 text-maroon-900', deskripsi: data.deskripsi, is_active: data.is_active,
                     image_url: data.image_url, gallery: data.gallery,
                 };
-                this.variants = data.variants && data.variants.length ? data.variants : [];
+                this.variants = (data.variants && data.variants.length)
+                    ? data.variants.map(v => ({
+                        id: v.id,
+                        label: v.label,
+                        images: v.images || [],
+                        newFileCount: 0,
+                        _key: v.id,
+                    }))
+                    : [];
             } catch (e) {
                 alert('Gagal memuat data produk.');
                 this.open = false;
