@@ -89,6 +89,13 @@ class OrderController extends Controller
             ]);
         }
 
+        // Pesanan yang belum paid tidak boleh diubah ke diproses, dikirim, atau selesai
+        if (! $order->isPaid() && in_array($data['status'], [Order::STATUS_DIPROSES, Order::STATUS_DIKIRIM, Order::STATUS_SELESAI], true)) {
+            return back()->withErrors([
+                'status' => 'Pesanan belum dibayar tidak bisa diubah statusnya ke diproses, dikirim, atau selesai.',
+            ]);
+        }
+
         // Sesuai alur: status "Dikirim" wajib sudah ada kurir + nomor resi.
         if ($data['status'] === Order::STATUS_DIKIRIM) {
             $kurir = $data['kurir'] ?? $order->kurir;
@@ -102,12 +109,6 @@ class OrderController extends Controller
         }
 
         DB::transaction(function () use ($order, $data) {
-            // Dibatalkan -> stok barang di pesanan ini dikembalikan (sekali saja).
-            if ($data['status'] === Order::STATUS_DIBATALKAN && $order->status !== Order::STATUS_DIBATALKAN) {
-                $order->restoreStock();
-            }
-
-            $order->status = $data['status'];
             if (! empty($data['kurir'])) {
                 $order->kurir = $data['kurir'];
             }
@@ -115,6 +116,12 @@ class OrderController extends Controller
                 $order->nomor_resi = $data['nomor_resi'];
             }
             $order->save();
+
+            if ($data['status'] === Order::STATUS_DIBATALKAN) {
+                \App\Support\OrderLifecycle::cancel($order, 'Dibatalkan oleh owner');
+            } else {
+                \App\Support\OrderLifecycle::transition($order, $data['status'], 'Status diubah oleh owner');
+            }
         });
 
         return redirect()->route('owner.transaksi.index')->with('status', 'Pesanan '.$order->order_code.' diubah ke status "'.$order->statusLabel().'".');

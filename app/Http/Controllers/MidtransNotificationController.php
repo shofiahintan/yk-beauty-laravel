@@ -16,33 +16,29 @@ class MidtransNotificationController extends Controller
         Config::$isSanitized = config('midtrans.is_sanitized');
         Config::$is3ds = config('midtrans.is_3ds');
 
-        $notification = new Notification();
+        $orderId = $request->input('order_id');
+        $status = $request->input('transaction_status');
+        $fraud = $request->input('fraud_status');
+        $paymentType = $request->input('payment_type');
 
-        $order = Order::where('order_code', $notification->order_id)->first();
+        if (!$orderId) {
+            try {
+                $notification = new Notification();
+                $orderId = $notification->order_id;
+                $status = $notification->transaction_status;
+                $fraud = $notification->fraud_status ?? null;
+                $paymentType = $notification->payment_type ?? null;
+            } catch (\Throwable $e) {
+                return response()->json(['message' => 'Invalid notification: ' . $e->getMessage()], 400);
+            }
+        }
+
+        $order = Order::where('order_code', $orderId)->first();
         if (!$order) {
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        $status = $notification->transaction_status;
-        $fraud = $notification->fraud_status ?? null;
-
-        if (($status === 'capture' && $fraud === 'accept') || $status === 'settlement') {
-            $order->update([
-                'payment_status' => 'paid',
-                'payment_method' => $notification->payment_type,
-                'paid_at' => now(),
-            ]);
-        } elseif (in_array($status, ['cancel', 'deny', 'expire'], true)) {
-            if ($order->payment_status !== 'paid') {
-                $order->update(['payment_status' => $status === 'expire' ? 'expired' : 'failed']);
-                if ($order->status === 'diproses') {
-                    $order->restoreStock();
-                    $order->update(['status' => 'dibatalkan']);
-                }
-            }
-        } elseif ($status === 'pending') {
-            $order->update(['payment_status' => 'pending']);
-        }
+        \App\Support\OrderLifecycle::applyMidtransStatus($order, (string) $status, $fraud, $paymentType);
 
         return response()->json(['message' => 'OK']);
     }

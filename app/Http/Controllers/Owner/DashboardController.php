@@ -11,27 +11,27 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // Pendapatan hanya dihitung dari order yang bukan "dibatalkan"
-        $baseQuery = fn () => Order::where('status', '!=', Order::STATUS_DIBATALKAN);
-
-        $today = Carbon::today();
-        $yesterday = Carbon::yesterday();
+        $today = Carbon::today('Asia/Jakarta');
+        $tomorrow = $today->copy()->addDay();
+        $yesterday = $today->copy()->subDay();
         $startOfWeek = $today->copy()->startOfWeek();
+        $nextWeek = $startOfWeek->copy()->addWeek();
         $startOfLastWeek = $startOfWeek->copy()->subWeek();
 
-        $pendapatanHariIni = (clone $baseQuery())->whereDate('created_at', $today)->sum('total');
-        $pendapatanKemarin = (clone $baseQuery())->whereDate('created_at', $yesterday)->sum('total');
-        $pendapatanMingguIni = (clone $baseQuery())->where('created_at', '>=', $startOfWeek)->sum('total');
-        $pendapatanMingguLalu = (clone $baseQuery())->whereBetween('created_at', [$startOfLastWeek, $startOfWeek])->sum('total');
+        $pendapatanHariIni = (int) Order::paidBetween($today, $tomorrow)->sum('subtotal');
+        $pendapatanKemarin = (int) Order::paidBetween($yesterday, $today)->sum('subtotal');
+        $pendapatanMingguIni = (int) Order::paidBetween($startOfWeek, $nextWeek)->sum('subtotal');
+        $pendapatanMingguLalu = (int) Order::paidBetween($startOfLastWeek, $startOfWeek)->sum('subtotal');
 
-        $pesananBaruHariIni = Order::whereDate('created_at', $today)->count();
+        $pesananBaruHariIni = Order::where('created_at', '>=', $today)
+            ->where('created_at', '<', $tomorrow)
+            ->count();
         $produkStokMenipis = Product::lowStock()->count();
 
-        // Tren penjualan 30 hari terakhir (omset per hari, order yang bukan dibatalkan)
+        // Tren penjualan 30 hari terakhir (omset per hari, order paid, tanpa ongkir)
         $mulai = $today->copy()->subDays(29);
-        $rows = (clone $baseQuery())
-            ->where('created_at', '>=', $mulai)
-            ->selectRaw('DATE(created_at) as tanggal, SUM(total) as total')
+        $rows = Order::paidBetween($mulai, $tomorrow)
+            ->selectRaw('DATE(COALESCE(paid_at, created_at)) as tanggal, SUM(subtotal) as total')
             ->groupBy('tanggal')
             ->pluck('total', 'tanggal');
 

@@ -47,20 +47,15 @@ class OrderController extends Controller
             ->where('user_id', auth()->id())
             ->firstOrFail();
 
-        if ($order->status === 'diproses') {
-            // Stok barang di pesanan ini dikembalikan (sekali saja) — sama seperti
-            // saat owner membatalkan pesanan dari panel.
-            DB::transaction(function () use ($order) {
-                $fresh = Order::with('items')->whereKey($order->id)->lockForUpdate()->first();
-
-                if ($fresh && $fresh->status === 'diproses') {
-                    $fresh->restoreStock();
-                    $fresh->update(['status' => 'dibatalkan']);
-                }
-            });
-
-            $order->refresh();
+        if ($order->status !== Order::STATUS_MENUNGGU) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesanan hanya bisa dibatalkan saat masih menunggu pembayaran.',
+            ], 422);
         }
+
+        \App\Support\OrderLifecycle::cancel($order, 'Dibatalkan oleh pembeli');
+        $order->refresh();
 
         return response()->json(['success' => true, 'status' => $order->status]);
     }

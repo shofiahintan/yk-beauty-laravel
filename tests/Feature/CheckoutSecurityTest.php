@@ -29,7 +29,6 @@ class CheckoutSecurityTest extends TestCase
             'brand' => 'TestBrand',
             'kategori' => 'skincare',
             'harga' => 50000,
-            'harga_coret' => null,
             'image' => 'assets/images/test.png',
             'stok' => 10,
             'is_active' => true,
@@ -42,8 +41,11 @@ class CheckoutSecurityTest extends TestCase
             'buyer' => [
                 'nama' => 'Test User',
                 'wa' => '08123456789',
+                'alamat' => 'Jl. Gejayan No. 12',
+                'kota' => 'Sleman',
+                'kodepos' => '55281',
             ],
-            'shipping' => 'ambil',
+            'shipping' => 'kurir',
             'payment' => 'transfer',
             'items' => [
                 ['id' => $product->slug, 'qty' => 1, 'varian' => null, 'ukuran' => null],
@@ -86,9 +88,10 @@ class CheckoutSecurityTest extends TestCase
         // Verifikasi: harga di DB harus dari products.harga (75000), bukan 1
         $order = Order::where('order_code', $response->json('order_id'))->first();
         $this->assertNotNull($order);
+        $shippingFlat = (int) config('shop.shipping_flat');
         $this->assertEquals(150000, $order->subtotal); // 75000 * 2
-        $this->assertEquals(150000, $order->total);    // ambil di toko, shipping 0
-        $this->assertEquals(150000, $response->json('total'));
+        $this->assertEquals(150000 + $shippingFlat, $order->total);    // kurir flat ongkir
+        $this->assertEquals(150000 + $shippingFlat, $response->json('total'));
 
         $item = $order->items()->first();
         $this->assertEquals(75000, $item->harga);
@@ -210,7 +213,7 @@ class CheckoutSecurityTest extends TestCase
     }
 
     /** @test */
-    public function status_pesanan_baru_adalah_diproses()
+    public function status_pesanan_baru_adalah_menunggu_pembayaran()
     {
         $user = $this->createCustomer();
         $product = $this->createProduct();
@@ -219,7 +222,9 @@ class CheckoutSecurityTest extends TestCase
         $response->assertOk();
 
         $order = Order::where('order_code', $response->json('order_id'))->first();
-        $this->assertEquals('diproses', $order->status);
+        // Pesanan baru selalu menunggu_pembayaran (pembayaran dikonfirmasi Midtrans lewat webhook)
+        $this->assertEquals(Order::STATUS_MENUNGGU, $order->status);
+        $this->assertEquals(Order::PAYMENT_PENDING, $order->payment_status);
     }
 
     /** @test */

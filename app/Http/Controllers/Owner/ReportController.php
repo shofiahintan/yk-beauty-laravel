@@ -15,35 +15,23 @@ class ReportController extends Controller
     {
         [$mulai, $selesai] = $this->resolveRange($request);
 
-        $baseQuery = fn () => Order::whereBetween('created_at', [$mulai, $selesai])
-            ->where('status', '!=', Order::STATUS_DIBATALKAN);
-
-        $totalPendapatan = (clone $baseQuery())->sum('total');
-        $totalPesanan = (clone $baseQuery())->count();
+        $totalPendapatan = (int) Order::paidBetween($mulai, $selesai)->sum('subtotal');
+        $totalPesanan = Order::paidBetween($mulai, $selesai)->count();
         $rataRata = $totalPesanan > 0 ? intdiv($totalPendapatan, $totalPesanan) : 0;
-        $pesananDibatalkan = Order::whereBetween('created_at', [$mulai, $selesai])
-            ->where('status', Order::STATUS_DIBATALKAN)->count();
+        $pesananDibatalkan = Order::where('status', Order::STATUS_DIBATALKAN)
+            ->whereRaw('COALESCE(paid_at, created_at) >= ?', [$mulai])
+            ->whereRaw('COALESCE(paid_at, created_at) < ?', [$selesai])
+            ->count();
 
-        $produkTerlaris = OrderItem::query()
-            ->select('nama')
-            ->selectRaw('SUM(qty) as total_qty')
-            ->selectRaw('SUM(line_total) as total_omset')
-            ->whereHas('order', function ($q) use ($mulai, $selesai) {
-                $q->whereBetween('created_at', [$mulai, $selesai])
-                    ->where('status', '!=', Order::STATUS_DIBATALKAN);
-            })
-            ->groupBy('nama')
-            ->orderByDesc('total_qty')
-            ->take(5)
-            ->get();
+        $produkTerlaris = \App\Support\ProductSalesReport::topProducts($mulai, $selesai, 5);
 
-        $orders = (clone $baseQuery())->with('user')->orderByDesc('created_at')->get();
+        $orders = Order::paidBetween($mulai, $selesai)->with('user')->orderByDesc('created_at')->get();
 
         return view('owner.laporan', [
             'tren' => $this->buildTrend($orders, $mulai, $selesai),
             'perBulan' => $mulai->diffInDays($selesai) > 92,
             'mulai' => $mulai,
-            'selesai' => $selesai,
+            'selesai' => $selesai->copy()->subSecond(),
             'totalPendapatan' => $totalPendapatan,
             'totalPesanan' => $totalPesanan,
             'rataRata' => $rataRata,
@@ -57,12 +45,11 @@ class ReportController extends Controller
     {
         [$mulai, $selesai] = $this->resolveRange($request);
 
-        $orders = Order::whereBetween('created_at', [$mulai, $selesai])
-            ->where('status', '!=', Order::STATUS_DIBATALKAN)
+        $orders = Order::paidBetween($mulai, $selesai)
             ->orderBy('created_at')
             ->get();
 
-        $filename = 'laporan-penjualan_'.$mulai->format('Ymd').'-'.$selesai->format('Ymd').'.csv';
+        $filename = 'laporan-penjualan_'.$mulai->format('Ymd').'-'.$selesai->copy()->subSecond()->format('Ymd').'.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -76,7 +63,7 @@ class ReportController extends Controller
             foreach ($orders as $order) {
                 fputcsv($handle, [
                     $order->order_code,
-                    $order->created_at->format('Y-m-d H:i'),
+                    ($order->paid_at ?? $order->created_at)->format('Y-m-d H:i'),
                     $order->buyer_nama,
                     $order->payment_method,
                     $order->statusLabel(),
@@ -103,13 +90,13 @@ class ReportController extends Controller
         $keyFormat = $perBulan ? 'Y-m' : 'Y-m-d';
 
         $totals = $orders
-            ->groupBy(fn ($o) => $o->created_at->format($keyFormat))
-            ->map(fn ($group) => (int) $group->sum('total'));
+            ->groupBy(fn ($o) => ($o->paid_at ?? $o->created_at)->timezone('Asia/Jakarta')->format($keyFormat))
+            ->map(fn ($group) => (int) $group->sum('subtotal'));
 
         $tren = [];
         $cursor = $perBulan ? $mulai->copy()->startOfMonth() : $mulai->copy()->startOfDay();
 
-        while ($cursor->lte($selesai)) {
+        while ($cursor->lt($selesai)) {
             $tren[] = [
                 'label' => $cursor->translatedFormat($perBulan ? 'M Y' : 'd M'),
                 'total' => (int) ($totals[$cursor->format($keyFormat)] ?? 0),
@@ -126,28 +113,25 @@ class ReportController extends Controller
      */
     private function resolveRange(Request $request): array
     {
-        // ?bulan=2026-08 -> satu bulan penuh (bulan berjalan dipotong sampai hari ini)
+        // ?bulan=2026-08 -> satu bulan penuh
         $bulan = (string) $request->query('bulan');
         if (preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $bulan)) {
-            $awal = Carbon::createFromFormat('Y-m-d', $bulan.'-01')->startOfDay();
+            $awal = Carbon::createFromFormat('Y-m-d', $bulan.'-01', 'Asia/Jakarta')->startOfDay();
+            $akhir = $awal->copy()->addMonth()->startOfDay();
 
-            if ($awal->lte(Carbon::today()->endOfDay())) {
-                $akhir = $awal->copy()->endOfMonth();
-
-                return [$awal, $akhir->greaterThan(Carbon::today()->endOfDay()) ? Carbon::today()->endOfDay() : $akhir];
-            }
+            return [$awal, $akhir];
         }
 
         $mulai = $request->query('mulai')
-            ? Carbon::parse($request->query('mulai'))->startOfDay()
-            : Carbon::today()->subDays(29)->startOfDay();
+            ? Carbon::parse($request->query('mulai'), 'Asia/Jakarta')->startOfDay()
+            : Carbon::today('Asia/Jakarta')->subDays(29)->startOfDay();
 
         $selesai = $request->query('selesai')
-            ? Carbon::parse($request->query('selesai'))->endOfDay()
-            : Carbon::today()->endOfDay();
+            ? Carbon::parse($request->query('selesai'), 'Asia/Jakarta')->addDay()->startOfDay()
+            : Carbon::today('Asia/Jakarta')->addDay()->startOfDay();
 
         if ($mulai->greaterThan($selesai)) {
-            [$mulai, $selesai] = [$selesai->copy()->startOfDay(), $mulai->copy()->endOfDay()];
+            [$mulai, $selesai] = [$selesai->copy()->subDay()->startOfDay(), $mulai->copy()->addDay()->startOfDay()];
         }
 
         return [$mulai, $selesai];

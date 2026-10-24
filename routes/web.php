@@ -60,6 +60,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/pesanan', [App\Http\Controllers\OrderController::class, 'show'])->name('pesanan');
     Route::get('/riwayat-pesanan', [App\Http\Controllers\OrderController::class, 'history'])->name('riwayat');
     Route::post('/pesanan/{orderCode}/cancel', [App\Http\Controllers\OrderController::class, 'cancel'])->name('pesanan.cancel');
+    Route::post('/pesanan/{orderCode}/batal', [App\Http\Controllers\OrderController::class, 'cancel'])->name('pesanan.batal');
 });
 
 // ===== ULASAN (auth required) =====
@@ -111,10 +112,11 @@ Route::prefix('owner')->name('owner.')->middleware(['auth', 'owner'])->group(fun
 
     Route::get('/transaksi', [App\Http\Controllers\Owner\OrderController::class, 'index'])->name('transaksi.index');
     Route::get('/transaksi/{order}', [App\Http\Controllers\Owner\OrderController::class, 'show'])->name('transaksi.show');
-    Route::patch('/transaksi/{order}', [App\Http\Controllers\Owner\OrderController::class, 'update'])->name('transaksi.update');
+    Route::match(['put', 'patch'], '/transaksi/{order}', [App\Http\Controllers\Owner\OrderController::class, 'update'])->name('transaksi.update');
 
     Route::get('/laporan', [App\Http\Controllers\Owner\ReportController::class, 'index'])->name('laporan.index');
     Route::get('/laporan/unduh', [App\Http\Controllers\Owner\ReportController::class, 'download'])->name('laporan.download');
+    Route::get('/laporan/download', [App\Http\Controllers\Owner\ReportController::class, 'download'])->name('laporan.download_en');
 
     Route::get('/pengguna', [App\Http\Controllers\Owner\UserController::class, 'index'])->name('pengguna.index');
     Route::get('/pengguna/{user}', [App\Http\Controllers\Owner\UserController::class, 'show'])->name('pengguna.show');
