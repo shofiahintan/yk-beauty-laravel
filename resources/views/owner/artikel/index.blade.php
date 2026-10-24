@@ -47,14 +47,14 @@
                                 'published_at' => $post->published_at ? $post->published_at->format('Y-m-d') : '',
                                 'excerpt'      => $post->excerpt,
                                 'body'         => is_array($post->body) ? implode("\n\n", $post->body) : '',
-                                'image_url'    => asset($post->image),
+                                'image_url'    => $post->image_url,
                                 'action'       => route('owner.artikel.update', $post),
                             ];
                         @endphp
                         <tr class="hover:bg-pink-50/50">
                             <td class="px-5 py-3">
                                 <div class="flex items-center gap-3">
-                                    <img src="{{ asset($post->image) }}" class="h-12 w-16 rounded-xl object-cover shrink-0 bg-pink-100" alt="">
+                                    <img src="{{ $post->image_url }}" class="h-12 w-16 rounded-xl object-cover shrink-0 bg-pink-100" alt="">
                                     <div class="min-w-0 max-w-[260px]">
                                         <p class="font-medium text-ink-900 leading-snug truncate" title="{{ $post->title }}">{{ $post->title }}</p>
                                         <p class="text-[11.5px] text-ink-soft font-mono mt-0.5 truncate">/blog/{{ $post->slug }}</p>

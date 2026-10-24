@@ -28,7 +28,7 @@
       </div>
 
       <div class="blog-detail-img">
-        <img src="{{ asset($article->image) }}" alt="{{ $article->title }}">
+        <img src="{{ $article->image_url }}" alt="{{ $article->title }}">
       </div>
 
       <div class="blog-detail-body">
@@ -49,7 +49,7 @@
             @foreach ($related as $a)
               <article class="blog-card">
                 <a href="{{ route('blog.detail', $a->slug) }}" class="blog-card-img">
-                  <img src="{{ asset($a->image) }}" alt="{{ $a->title }}" loading="lazy">
+                  <img src="{{ $a->image_url }}" alt="{{ $a->title }}" loading="lazy">
                 </a>
                 <div class="blog-card-body">
                   <div class="blog-meta-row">

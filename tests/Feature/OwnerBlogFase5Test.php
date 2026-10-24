@@ -267,4 +267,79 @@ class OwnerBlogFase5Test extends TestCase
         $this->actingAs($owner)->post('/owner/artikel', [])
             ->assertSessionHasErrors(['title', 'category', 'published_at', 'image', 'excerpt', 'body']);
     }
+
+    public function test_blog_images_display_correctly_on_public_list_detail_and_owner_panel(): void
+    {
+        $owner = $this->createOwner();
+
+        // 1. Artikel dengan foto seed bawaan
+        $seedPost = BlogPost::create([
+            'title'        => 'Artikel Bawaan Seeder',
+            'slug'         => 'artikel-bawaan-seeder',
+            'category'     => 'Tips',
+            'published_at' => now()->toDateString(),
+            'image'        => 'assets/images/landing3.jpg',
+            'excerpt'      => 'Ringkasan artikel seeder',
+            'body'         => ['Paragraf konten seeder'],
+        ]);
+
+        // 2. Artikel yang diupload owner (tersimpan di assets/images/blog/...)
+        $fakeUploaded = UploadedFile::fake()->image('uploaded-article.jpg', 600, 400);
+        $this->actingAs($owner)->post('/owner/artikel', [
+            'title'        => 'Artikel Baru Diupload',
+            'category'     => 'Skincare',
+            'published_at' => now()->toDateString(),
+            'image'        => $fakeUploaded,
+            'excerpt'      => 'Ringkasan artikel baru upload',
+            'body'         => 'Isi artikel baru yang diupload.',
+        ])->assertRedirect('/owner/artikel');
+
+        $uploadedPost = BlogPost::where('slug', 'artikel-baru-diupload')->first();
+        $this->assertNotNull($uploadedPost);
+        $this->assertStringContainsString('assets/images/blog/', $uploadedPost->image);
+        $this->assertFileExists(public_path($uploadedPost->image));
+
+        // 3. Artikel dengan path uploads/blog/... (format disk public)
+        $publicDiskPost = BlogPost::create([
+            'title'        => 'Artikel Format Disk Public',
+            'slug'         => 'artikel-format-disk-public',
+            'category'     => 'Edukasi',
+            'published_at' => now()->toDateString(),
+            'image'        => 'uploads/blog/custom_public_disk.jpg',
+            'excerpt'      => 'Ringkasan format storage',
+            'body'         => ['Paragraf storage public'],
+        ]);
+
+        // Cek halaman publik daftar blog (/blog)
+        $resPublicList = $this->get('/blog');
+        $resPublicList->assertOk();
+        $resPublicList->assertSee(asset('assets/images/landing3.jpg'), false);
+        $resPublicList->assertSee(asset($uploadedPost->image), false);
+        $resPublicList->assertSee(asset('storage/uploads/blog/custom_public_disk.jpg'), false);
+
+        // Cek halaman publik detail artikel (/blog/{slug})
+        $resDetailSeed = $this->get('/blog/' . $seedPost->slug);
+        $resDetailSeed->assertOk();
+        $resDetailSeed->assertSee(asset('assets/images/landing3.jpg'), false);
+
+        $resDetailUploaded = $this->get('/blog/' . $uploadedPost->slug);
+        $resDetailUploaded->assertOk();
+        $resDetailUploaded->assertSee(asset($uploadedPost->image), false);
+
+        $resDetailPublicDisk = $this->get('/blog/' . $publicDiskPost->slug);
+        $resDetailPublicDisk->assertOk();
+        $resDetailPublicDisk->assertSee(asset('storage/uploads/blog/custom_public_disk.jpg'), false);
+
+        // Cek panel owner (/owner/artikel)
+        $resOwnerIndex = $this->actingAs($owner)->get('/owner/artikel');
+        $resOwnerIndex->assertOk();
+        $resOwnerIndex->assertSee(asset('assets/images/landing3.jpg'), false);
+        $resOwnerIndex->assertSee(asset($uploadedPost->image), false);
+        $resOwnerIndex->assertSee(asset('storage/uploads/blog/custom_public_disk.jpg'), false);
+
+        // Bersihkan file yang diupload saat tes
+        if (File::exists(public_path($uploadedPost->image))) {
+            File::delete(public_path($uploadedPost->image));
+        }
+    }
 }

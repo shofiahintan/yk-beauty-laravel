@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\BlogPost;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class BlogController extends Controller
 {
-    private string $uploadDir = 'uploads/blog';
+    // Konsisten dengan foto produk (public/assets/images/...), disimpan di public/
+    // agar asset($post->image) langsung bekerja di seluruh storefront tanpa bergantung symlink.
+    private string $uploadDir = 'assets/images/blog';
 
     public function index(Request $request)
     {
@@ -151,8 +154,23 @@ class BlogController extends Controller
 
     private function deleteImageFile(?string $path): void
     {
-        if ($path && ! str_starts_with($path, 'assets/') && File::exists(public_path($path))) {
+        if (! $path) return;
+
+        // Jangan hapus foto bawaan seed (landing*.png/jpg, produk*.jpg, dsb)
+        if (preg_match('#assets/images/(landing\d+|produk\d+|logo)#', $path) || (! str_contains($path, 'blog_') && ! str_contains($path, 'uploads/blog'))) {
+            return;
+        }
+
+        if (File::exists(public_path($path))) {
             File::delete(public_path($path));
+        }
+
+        if (Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
+
+        if (File::exists(public_path('storage/' . $path))) {
+            File::delete(public_path('storage/' . $path));
         }
     }
 }
