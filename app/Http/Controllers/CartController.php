@@ -7,6 +7,7 @@ use App\Models\Collection;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CartController extends Controller
 {
@@ -36,14 +37,14 @@ class CartController extends Controller
     {
         $validated = $request->validate([
             'id' => 'required|string',
-            'qty' => 'nullable|integer|min:1|max:99',
+            'qty' => 'required|integer|min:1|max:99',
             'varian' => 'nullable|string|max:100',
             'ukuran' => 'nullable|string|max:100',
             'type' => 'nullable|string|in:product,bundle',
         ]);
 
         $type = $validated['type'] ?? 'product';
-        $qty = (int) ($validated['qty'] ?? 1);
+        $qty = (int) $validated['qty'];
         $varian = !empty($validated['varian']) ? trim($validated['varian']) : null;
         $ukuran = !empty($validated['ukuran']) ? trim($validated['ukuran']) : null;
         $slug = $validated['id'];
@@ -53,11 +54,23 @@ class CartController extends Controller
         $collectionId = null;
 
         if ($type === 'bundle') {
-            $bundle = Collection::where('slug', $slug)->where('is_active', true)->firstOrFail();
+            $bundle = Collection::where('slug', $slug)->where('is_active', true)->first();
+            if (! $bundle) {
+                throw ValidationException::withMessages(['id' => 'Paket bundling tidak ditemukan atau tidak aktif.']);
+            }
             $collectionId = $bundle->id;
             $lineKey = CartItem::generateLineKey('bundle', $bundle->id, null, null);
         } else {
-            $product = Product::where('slug', $slug)->where('is_active', true)->firstOrFail();
+            $product = Product::with('variants')->where('slug', $slug)->where('is_active', true)->first();
+            if (! $product) {
+                throw ValidationException::withMessages(['id' => 'Produk tidak ditemukan atau tidak aktif.']);
+            }
+            $productVariants = $product->variants->pluck('label')->all();
+            if (count($productVariants) > 0) {
+                if ($varian !== null && ! in_array($varian, $productVariants, true)) {
+                    throw ValidationException::withMessages(['varian' => 'Varian yang dipilih tidak valid.']);
+                }
+            }
             $productId = $product->id;
             $lineKey = CartItem::generateLineKey('product', $product->id, $varian, $ukuran);
         }
@@ -90,7 +103,7 @@ class CartController extends Controller
             'varian' => 'nullable|string',
             'ukuran' => 'nullable|string',
             'type' => 'nullable|string',
-            'qty' => 'required|integer',
+            'qty' => 'required|integer|min:1|max:99',
         ]);
 
         $userId = auth()->id();
@@ -116,11 +129,7 @@ class CartController extends Controller
         }
 
         if ($item) {
-            if ($qty <= 0) {
-                $item->delete();
-            } else {
-                $item->update(['qty' => min(99, $qty)]);
-            }
+            $item->update(['qty' => min(99, $qty)]);
         }
 
         return $this->getCart();
@@ -204,8 +213,12 @@ class CartController extends Controller
                 $productId = null;
                 $lineKey = CartItem::generateLineKey('bundle', $bundle->id, null, null);
             } else {
-                $product = Product::where('slug', $slug)->where('is_active', true)->first();
+                $product = Product::with('variants')->where('slug', $slug)->where('is_active', true)->first();
                 if (! $product) continue;
+                $productVariants = $product->variants->pluck('label')->all();
+                if (count($productVariants) > 0 && $varian !== null && ! in_array($varian, $productVariants, true)) {
+                    continue;
+                }
                 $productId = $product->id;
                 $collectionId = null;
                 $lineKey = CartItem::generateLineKey('product', $product->id, $varian, $ukuran);

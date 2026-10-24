@@ -110,30 +110,34 @@ class CartWishlistDatabaseFase4Test extends TestCase
         ]);
     }
 
-    public function test_setting_qty_to_zero_removes_item_from_database_cart(): void
+    public function test_setting_qty_outside_1_to_99_is_rejected(): void
     {
         $user = User::factory()->create();
         $product = $this->createSampleProduct();
 
         $lineKey = CartItem::generateLineKey('product', $product->id, null, null);
-        $cartItem = CartItem::create([
+        CartItem::create([
             'user_id' => $user->id,
             'product_id' => $product->id,
             'qty' => 2,
             'line_key' => $lineKey,
         ]);
 
-        $response = $this->actingAs($user)->postJson('/cart/set-qty', [
+        // Qty 0 ditolak
+        $response0 = $this->actingAs($user)->postJson('/cart/set-qty', [
             'line_key' => $lineKey,
             'qty' => 0,
         ]);
+        $response0->assertStatus(422)
+            ->assertJsonValidationErrors('qty');
 
-        $response->assertOk()
-            ->assertJsonPath('cart', []);
-
-        $this->assertDatabaseMissing('cart_items', [
-            'id' => $cartItem->id,
+        // Qty 100 ditolak
+        $response100 = $this->actingAs($user)->postJson('/cart/set-qty', [
+            'line_key' => $lineKey,
+            'qty' => 100,
         ]);
+        $response100->assertStatus(422)
+            ->assertJsonValidationErrors('qty');
     }
 
     public function test_user_can_remove_item_from_database_cart(): void
@@ -440,5 +444,125 @@ class CartWishlistDatabaseFase4Test extends TestCase
         $resRemove = $this->actingAs($user)->postJson('/wishlist/remove', ['id' => $product->slug]);
         $resRemove->assertOk()->assertJsonPath('wishlist', []);
         $this->assertDatabaseMissing('wishlists', ['user_id' => $user->id, 'product_id' => $product->id]);
+    }
+
+    public function test_validation_rejects_inactive_or_unknown_product_on_cart_and_wishlist(): void
+    {
+        $user = User::factory()->create();
+        $inactiveProduct = Product::create([
+            'slug' => 'produk-nonaktif',
+            'nama' => 'Produk Nonaktif',
+            'brand' => 'YK',
+            'kategori' => 'skincare',
+            'harga' => 30000,
+            'stok' => 5,
+            'is_active' => false,
+            'image' => 'products/sample.png',
+        ]);
+
+        // Tambah ke cart dengan slug tidak dikenal -> 422
+        $resUnknown = $this->actingAs($user)->postJson('/cart/add', [
+            'id' => 'slug-ngawur-tidak-ada',
+            'qty' => 1,
+            'type' => 'product',
+        ]);
+        $resUnknown->assertStatus(422)->assertJsonValidationErrors('id');
+
+        // Tambah ke cart dengan produk nonaktif -> 422
+        $resInactive = $this->actingAs($user)->postJson('/cart/add', [
+            'id' => $inactiveProduct->slug,
+            'qty' => 1,
+            'type' => 'product',
+        ]);
+        $resInactive->assertStatus(422)->assertJsonValidationErrors('id');
+
+        // Wishlist dengan produk nonaktif -> 422
+        $resWishInactive = $this->actingAs($user)->postJson('/wishlist/toggle', [
+            'id' => $inactiveProduct->slug,
+        ]);
+        $resWishInactive->assertStatus(422)->assertJsonValidationErrors('id');
+    }
+
+    public function test_validation_rejects_quantity_outside_1_to_99(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->createSampleProduct();
+
+        // Qty 0 ditolak
+        $this->actingAs($user)->postJson('/cart/add', [
+            'id' => $product->slug,
+            'qty' => 0,
+            'type' => 'product',
+        ])->assertStatus(422)->assertJsonValidationErrors('qty');
+
+        // Qty 100 ditolak
+        $this->actingAs($user)->postJson('/cart/add', [
+            'id' => $product->slug,
+            'qty' => 100,
+            'type' => 'product',
+        ])->assertStatus(422)->assertJsonValidationErrors('qty');
+
+        // Qty negatif ditolak
+        $this->actingAs($user)->postJson('/cart/add', [
+            'id' => $product->slug,
+            'qty' => -5,
+            'type' => 'product',
+        ])->assertStatus(422)->assertJsonValidationErrors('qty');
+    }
+
+    public function test_validation_rejects_invalid_variant(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->createSampleProduct();
+        $product->variants()->create([
+            'label' => 'Original',
+            'sort_order' => 1,
+        ]);
+
+        // Varian yang tidak terdaftar ditolak
+        $response = $this->actingAs($user)->postJson('/cart/add', [
+            'id' => $product->slug,
+            'qty' => 1,
+            'varian' => 'Varian Palsu',
+            'type' => 'product',
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('varian');
+    }
+
+    public function test_validation_rejects_inactive_bundle(): void
+    {
+        $user = User::factory()->create();
+        $bundle = Collection::create([
+            'title' => 'Paket Mati',
+            'slug' => 'paket-mati',
+            'harga' => 50000,
+            'is_active' => false,
+            'image' => 'collections/bundle.png',
+        ]);
+
+        $response = $this->actingAs($user)->postJson('/cart/add', [
+            'id' => $bundle->slug,
+            'qty' => 1,
+            'type' => 'bundle',
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('id');
+    }
+
+    public function test_cart_and_wishlist_endpoints_reject_guests(): void
+    {
+        // Semua endpoint cart & wishlist harus menolak tamu yang belum login (401 Unauthorized)
+        $this->postJson('/cart/add', ['id' => 'sample', 'qty' => 1])->assertUnauthorized();
+        $this->postJson('/cart/set-qty', ['id' => 'sample', 'qty' => 2])->assertUnauthorized();
+        $this->postJson('/cart/remove', ['id' => 'sample'])->assertUnauthorized();
+        $this->postJson('/cart/clear')->assertUnauthorized();
+        $this->postJson('/cart/sync', ['items' => []])->assertUnauthorized();
+        $this->getJson('/cart')->assertUnauthorized();
+
+        $this->postJson('/wishlist/toggle', ['id' => 'sample'])->assertUnauthorized();
+        $this->postJson('/wishlist/remove', ['id' => 'sample'])->assertUnauthorized();
+        $this->postJson('/wishlist/sync', ['items' => []])->assertUnauthorized();
+        $this->getJson('/wishlist-items')->assertUnauthorized();
     }
 }

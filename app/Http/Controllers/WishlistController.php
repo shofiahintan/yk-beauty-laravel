@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\Wishlist;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class WishlistController extends Controller
 {
@@ -37,9 +38,9 @@ class WishlistController extends Controller
             'id' => 'required|string',
         ]);
 
-        $product = Product::where('slug', $validated['id'])->first();
+        $product = Product::where('slug', $validated['id'])->where('is_active', true)->first();
         if (! $product) {
-            return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan'], 404);
+            throw ValidationException::withMessages(['id' => 'Produk tidak ditemukan atau tidak aktif.']);
         }
 
         $userId = auth()->id();
@@ -93,7 +94,7 @@ class WishlistController extends Controller
 
         $userId = auth()->id();
         foreach ($validated['items'] as $slug) {
-            $product = Product::where('slug', $slug)->first();
+            $product = Product::where('slug', $slug)->where('is_active', true)->first();
             if ($product) {
                 Wishlist::firstOrCreate([
                     'user_id' => $userId,

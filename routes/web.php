@@ -125,6 +125,11 @@ Route::prefix('owner')->name('owner.')->middleware(['auth', 'owner'])->group(fun
     Route::put('/paket-bundling/{collection}', [App\Http\Controllers\Owner\CollectionController::class, 'update'])->name('koleksi.update');
     Route::delete('/paket-bundling/{collection}', [App\Http\Controllers\Owner\CollectionController::class, 'destroy'])->name('koleksi.destroy');
 
+    Route::get('/artikel', [App\Http\Controllers\Owner\BlogController::class, 'index'])->name('artikel.index');
+    Route::post('/artikel', [App\Http\Controllers\Owner\BlogController::class, 'store'])->name('artikel.store');
+    Route::put('/artikel/{artikel}', [App\Http\Controllers\Owner\BlogController::class, 'update'])->name('artikel.update');
+    Route::delete('/artikel/{artikel}', [App\Http\Controllers\Owner\BlogController::class, 'destroy'])->name('artikel.destroy');
+
     Route::get('/transaksi', [App\Http\Controllers\Owner\OrderController::class, 'index'])->name('transaksi.index');
     Route::get('/transaksi/{order}', [App\Http\Controllers\Owner\OrderController::class, 'show'])->name('transaksi.show');
     Route::match(['put', 'patch'], '/transaksi/{order}', [App\Http\Controllers\Owner\OrderController::class, 'update'])->name('transaksi.update');

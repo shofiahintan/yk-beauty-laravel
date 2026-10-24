@@ -72,6 +72,7 @@
                 $navItems = [
                     ['route' => 'owner.dashboard', 'active' => 'owner.dashboard', 'label' => 'Dashboard', 'icon' => 'grid'],
                     ['route' => 'owner.produk.index', 'active' => ['owner.produk.*', 'owner.koleksi.*'], 'label' => 'Kelola Produk', 'icon' => 'box'],
+                    ['route' => 'owner.artikel.index', 'active' => 'owner.artikel.*', 'label' => 'Artikel', 'icon' => 'book'],
                     ['route' => 'owner.transaksi.index', 'active' => 'owner.transaksi.*', 'label' => 'Kelola Transaksi Pemesanan', 'icon' => 'receipt'],
                     ['route' => 'owner.laporan.index', 'active' => 'owner.laporan.*', 'label' => 'Kelola Laporan', 'icon' => 'chart'],
                     ['route' => 'owner.pengguna.index', 'active' => 'owner.pengguna.*', 'label' => 'Kelola Data Pengguna', 'icon' => 'users'],
@@ -80,6 +81,7 @@
                 $icons = [
                     'grid' => '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
                     'box' => '<path d="M21 8.5 12 3 3 8.5v7L12 21l9-5.5v-7Z"/><path d="M3 8.5 12 14l9-5.5"/><path d="M12 14v7"/>',
+                    'book' => '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
                     'receipt' => '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6"/>',
                     'chart' => '<path d="M4 20V10M12 20V4M20 20v-7"/>',
                     'users' => '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 8.2a3.2 3.2 0 1 1 0 6.3"/><path d="M21 20c0-2.6-1.7-4.8-4-5.6"/>',
