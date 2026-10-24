@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!wrap || typeof allProduk === "undefined") return;
 
   function render() {
+    window.__ykRerenderCart = render;
     const cart = ykGetCart();
 
     if (cart.length === 0) {

@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   function render() {
+    window.__ykRerenderWishlist = render;
     const ids = ykGetWishlist();
     const items = ids.map(id => getProdukById(id)).filter(Boolean);
 

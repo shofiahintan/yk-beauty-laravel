@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CartItem;
 use App\Models\Collection;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -246,6 +247,11 @@ class CheckoutController extends Controller
             // Generate Snap token di dalam transaction: kalau ini gagal (misal Server Key
             // salah), order & pengurangan stok di atas ikut di-rollback otomatis.
             app(MidtransService::class)->createSnapToken($order);
+
+            // Kosongkan keranjang database setelah checkout berhasil
+            if (auth()->check()) {
+                CartItem::where('user_id', auth()->id())->delete();
+            }
 
             return $order;
         });

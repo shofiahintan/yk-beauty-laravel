@@ -19,6 +19,17 @@
 
 @yield('inline-data')
 
+<script>
+@auth
+  window.__YK_USER__ = { id: {{ auth()->id() }}, name: @json(auth()->user()->name) };
+  window.__YK_CART__ = @json(auth()->user()->cartItems()->with(['product', 'collection'])->get()->map->toCartArray()->values());
+  window.__YK_WISHLIST__ = @json(auth()->user()->wishlists()->with('product')->get()->pluck('product.slug')->filter()->values());
+@else
+  window.__YK_USER__ = null;
+  window.__YK_CART__ = null;
+  window.__YK_WISHLIST__ = null;
+@endauth
+</script>
 <script src="{{ asset('js/toast.js') }}"></script>
 <script src="{{ asset('js/cart.js') }}"></script>
 <script src="{{ asset('js/main.js') }}"></script>
