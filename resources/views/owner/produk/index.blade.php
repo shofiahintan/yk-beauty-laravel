@@ -64,8 +64,8 @@
                             <td class="px-5 py-3 text-ink-900">{{ ucfirst($product->kategori) }}</td>
                             <td class="px-5 py-3">
                                 <p class="text-ink-900 whitespace-nowrap">{{ formatRupiahOwner($product->harga) }}</p>
-                                @if ($product->harga_coret)
-                                    <p class="text-[11px] text-ink-soft line-through whitespace-nowrap">{{ formatRupiahOwner($product->harga_coret) }}</p>
+                                @if ($product->coret)
+                                    <p class="text-[11px] text-ink-soft line-through whitespace-nowrap">{{ formatRupiahOwner($product->coret) }}</p>
                                 @endif
                             </td>
                             <td class="px-5 py-3 {{ $product->isLowStock() ? 'text-maroon-900 font-semibold' : 'text-ink-900' }}">{{ $product->stok }}</td>
@@ -145,17 +145,17 @@
             <p class="o-section">Harga &amp; Stok</p>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                    <label class="o-label">Harga jual *</label>
+                    <label class="o-label">Harga normal *</label>
                     <div class="relative">
                         <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-ink-soft">Rp</span>
-                        <input type="number" name="harga" x-model="form.harga" required min="0" class="o-input pl-10" placeholder="0">
+                        <input type="number" name="harga_normal" x-model.number="form.harga_normal" required min="1" class="o-input pl-10" placeholder="0">
                     </div>
                 </div>
                 <div>
-                    <label class="o-label">Harga coret</label>
+                    <label class="o-label">Diskon (%)</label>
                     <div class="relative">
-                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-ink-soft">Rp</span>
-                        <input type="number" name="harga_coret" x-model="form.harga_coret" min="0" class="o-input pl-10" placeholder="Opsional">
+                        <input type="number" name="diskon_persen" x-model.number="form.diskon_persen" min="0" max="90" class="o-input pr-10" placeholder="0">
+                        <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-[13px] text-ink-soft">%</span>
                     </div>
                 </div>
                 <div>
@@ -165,6 +165,17 @@
                         <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-[12px] text-ink-soft">unit</span>
                     </div>
                 </div>
+            </div>
+
+            <div class="mt-3 p-3.5 rounded-xl bg-pink-50 border border-pink-100 flex items-center justify-between text-[12.5px] text-ink-800">
+                <div>
+                    <span class="text-ink-soft">Harga Jual Otomatis:</span>
+                    <span class="font-bold text-maroon-900 text-sm ml-1" x-text="formatRupiah(calculatedSellingPrice)"></span>
+                    <template x-if="Number(form.diskon_persen) > 0">
+                        <span class="ml-2 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium" x-text="'Hemat ' + formatRupiah(Math.max(0, Number(form.harga_normal) - calculatedSellingPrice))"></span>
+                    </template>
+                </div>
+                <span class="text-[11px] text-ink-soft">Dibulatkan ke ratusan terdekat</span>
             </div>
         </section>
 
@@ -279,11 +290,24 @@ function produkPanel() {
         imageName: '',
         galleryCount: 0,
         removeIds: [],
-        form: { nama: '', brand: '', kategori: '', harga: '', harga_coret: '', stok: '', badge: '', badge_class: 'bg-pink-100 text-maroon-900', deskripsi: '', is_active: true, image_url: null, gallery: [] },
+        form: { nama: '', brand: '', kategori: '', harga_normal: '', diskon_persen: '', stok: '', badge: '', badge_class: 'bg-pink-100 text-maroon-900', deskripsi: '', is_active: true, image_url: null, gallery: [] },
         init() {
             @if(request()->filled('cari') && $products->count() == 1)
                 this.openEdit({{ $products->first()->id }});
             @endif
+        },
+
+        get calculatedSellingPrice() {
+            const normal = Number(this.form.harga_normal) || 0;
+            const diskon = Number(this.form.diskon_persen) || 0;
+            if (normal <= 0) return 0;
+            if (diskon <= 0) return normal;
+            const raw = normal * (1 - (diskon / 100));
+            return Math.round(raw / 100) * 100;
+        },
+
+        formatRupiah(num) {
+            return 'Rp ' + Number(num || 0).toLocaleString('id-ID');
         },
 
         resetFiles() {
@@ -305,7 +329,7 @@ function produkPanel() {
             this.variants = [];
             this.kategoriSelect = '';
             this.resetFiles();
-            this.form = { nama: '', brand: '', kategori: '', harga: '', harga_coret: '', stok: '', badge: '', badge_class: 'bg-pink-100 text-maroon-900', deskripsi: '', is_active: true, image_url: null, gallery: [] };
+            this.form = { nama: '', brand: '', kategori: '', harga_normal: '', diskon_persen: '', stok: '', badge: '', badge_class: 'bg-pink-100 text-maroon-900', deskripsi: '', is_active: true, image_url: null, gallery: [] };
             this.open = true;
         },
 
@@ -328,7 +352,9 @@ function produkPanel() {
 
                 this.form = {
                     nama: data.nama, brand: data.brand, kategori: data.kategori,
-                    harga: data.harga, harga_coret: data.harga_coret, stok: data.stok,
+                    harga_normal: data.harga_normal || data.harga,
+                    diskon_persen: data.diskon_persen || '',
+                    stok: data.stok,
                     badge: data.badge, badge_class: data.badge_class || 'bg-pink-100 text-maroon-900', deskripsi: data.deskripsi, is_active: data.is_active,
                     image_url: data.image_url, gallery: data.gallery,
                 };

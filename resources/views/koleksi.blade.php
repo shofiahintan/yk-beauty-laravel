@@ -30,7 +30,7 @@
       <div class="koleksi-listing-grid">
         @foreach ($collections as $collection)
           @php
-            $hemat = (int) ($collection->harga_coret ?? 0) - (int) $collection->harga;
+            $hemat = $collection->hemat;
           @endphp
           <a href="{{ route('koleksi.detail', $collection->slug) }}" class="koleksi-card">
             <div class="koleksi-card-img-wrap">
@@ -44,8 +44,8 @@
               <p>{{ $collection->description ?: __('koleksi_card_desc') }}</p>
               <div class="koleksi-card-price-row">
                 <span class="harga">{{ formatRupiah($collection->harga) }}</span>
-                @if ($collection->harga_coret)
-                  <span class="harga-coret">{{ formatRupiah($collection->harga_coret) }}</span>
+                @if ($collection->coret)
+                  <span class="harga-coret">{{ formatRupiah($collection->coret) }}</span>
                 @endif
               </div>
               <span class="koleksi-card-link">{{ __('koleksi_card_link') }}</span>

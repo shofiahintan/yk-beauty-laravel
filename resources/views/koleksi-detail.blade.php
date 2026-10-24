@@ -21,8 +21,11 @@
         </p>
 
         <div class="koleksi-price-row">
-          <span class="harga">{{ formatRupiah($collection?->harga ?? 150000) }}</span>
-          <span class="harga-coret">{{ formatRupiah($collection?->harga_coret ?? 165000) }}</span>
+          <span class="harga">{{ formatRupiah($collection?->harga ?? 0) }}</span>
+          @if ($collection && $collection->coret > $collection->harga)
+            <span class="harga-coret">{{ formatRupiah($collection->coret) }}</span>
+            <span class="text-sm font-medium text-pink-600 ml-2">Hemat {{ formatRupiah($collection->hemat) }} ({{ $collection->hemat_persen }}%)</span>
+          @endif
         </div>
 
         @php

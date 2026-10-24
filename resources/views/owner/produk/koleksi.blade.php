@@ -39,8 +39,8 @@
                     <p class="text-[12px] text-ink-soft mt-2">{{ $coll->products_count }} produk di dalamnya</p>
                     <p class="mt-2">
                         <span class="text-maroon-900 font-semibold whitespace-nowrap">{{ formatRupiahOwner($coll->harga) }}</span>
-                        @if ($coll->harga_coret)
-                            <span class="text-[12px] text-ink-soft line-through whitespace-nowrap ml-1">{{ formatRupiahOwner($coll->harga_coret) }}</span>
+                        @if ($coll->coret)
+                            <span class="text-[12px] text-ink-soft line-through whitespace-nowrap ml-1">{{ formatRupiahOwner($coll->coret) }}</span>
                         @endif
                     </p>
                     <div class="flex items-center gap-2 mt-4">
@@ -76,21 +76,19 @@
                     <label class="o-label">Deskripsi</label>
                     <textarea name="description" x-model="form.description" rows="2" class="o-textarea" placeholder="Ceritakan singkat isi paketnya"></textarea>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="o-label">Harga paket *</label>
-                        <div class="relative">
-                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-ink-soft">Rp</span>
-                            <input type="number" name="harga" x-model="form.harga" required min="0" class="o-input pl-10" placeholder="0">
-                        </div>
+                <div>
+                    <label class="o-label">Harga paket *</label>
+                    <div class="relative">
+                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-ink-soft">Rp</span>
+                        <input type="number" name="harga" x-model.number="form.harga" required min="0" class="o-input pl-10" placeholder="0">
                     </div>
-                    <div>
-                        <label class="o-label">Harga coret</label>
-                        <div class="relative">
-                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-ink-soft">Rp</span>
-                            <input type="number" name="harga_coret" x-model="form.harga_coret" min="0" class="o-input pl-10" placeholder="Opsional">
-                        </div>
-                    </div>
+                </div>
+
+                <div x-show="form.produk_ids.length > 0" class="p-3.5 rounded-xl bg-pink-50 border border-pink-100 text-[12.5px] text-ink-800">
+                    <div>Jumlah harga satuan: <span class="font-semibold" x-text="formatRupiah(sumHargaSatuan)"></span>, Hemat <span class="font-semibold text-emerald-700" x-text="formatRupiah(hematRp)"></span> <span class="font-semibold text-emerald-700" x-text="'(' + hematPersen + '%)'"></span></div>
+                    <template x-if="form.harga && Number(form.harga) >= sumHargaSatuan && sumHargaSatuan > 0">
+                        <p class="text-rose-600 text-[11.5px] mt-1.5 font-medium">Harga paket harus lebih murah dari total harga satuan produk.</p>
+                    </template>
                 </div>
             </div>
         </section>
@@ -108,7 +106,7 @@
                     <label class="o-btn-soft">
                         <span x-text="imageUrl ? 'Ganti foto' : 'Pilih foto'"></span>
                         <input type="file" name="image" accept="image/*" class="sr-only o-modal-file" :required="mode === 'create'"
-                               @change="if ($event.target.files[0]) { imageUrl = URL.createObjectURL($event.target.files[0]); imageName = $event.target.files[0].name; }">
+                                @change="if ($event.target.files[0]) { imageUrl = URL.createObjectURL($event.target.files[0]); imageName = $event.target.files[0].name; }">
                     </label>
                     <p class="o-hint truncate" x-text="imageName || (mode === 'edit' ? 'Kosongkan jika tidak ingin mengganti.' : 'JPG atau PNG, maksimal 2 MB.')"></p>
                 </div>
@@ -120,9 +118,12 @@
             <div class="max-h-[240px] overflow-y-auto owner-notif-scroll rounded-2xl border border-pink-100 divide-y divide-pink-50">
                 @foreach ($allProducts as $p)
                     <label class="flex cursor-pointer items-center gap-3 px-4 py-2.5 hover:bg-pink-50/70">
-                        <input type="checkbox" name="produk[]" value="{{ $p->id }}" :checked="form.produk_ids.includes({{ $p->id }})" class="h-4 w-4 rounded border-pink-300 text-maroon-800 focus:ring-maroon-700/30">
+                        <input type="checkbox" name="produk[]" value="{{ $p->id }}"
+                               :checked="form.produk_ids.includes({{ $p->id }})"
+                               @change="toggleProduct({{ $p->id }}, $event.target.checked)"
+                               class="h-4 w-4 rounded border-pink-300 text-maroon-800 focus:ring-maroon-700/30">
                         <img src="{{ asset($p->image) }}" class="h-9 w-9 rounded-lg object-cover" alt="">
-                        <span class="min-w-0 text-[13px] text-ink-900 truncate">{{ $p->nama }} <span class="text-ink-soft">· {{ $p->brand }}</span></span>
+                        <span class="min-w-0 text-[13px] text-ink-900 truncate">{{ $p->nama }} <span class="text-ink-soft">· {{ $p->brand }} · {{ formatRupiahOwner($p->harga) }}</span></span>
                     </label>
                 @endforeach
             </div>
@@ -148,11 +149,46 @@ function koleksiPanel() {
         open: false,
         mode: 'create',
         formAction: '{{ route('owner.koleksi.store') }}',
-        form: { title: '', description: '', harga: '', harga_coret: '', is_active: true, produk_ids: [] },
+        form: { title: '', description: '', harga: '', is_active: true, produk_ids: [] },
         collections: @json($collections->items()),
+        allProducts: @json($allProducts->map(fn($p) => ['id' => $p->id, 'harga' => (int) $p->harga])),
         assetBase: @json(rtrim(asset(''), '/')),
         imageUrl: null,
         imageName: '',
+
+        get sumHargaSatuan() {
+            return this.form.produk_ids.reduce((total, id) => {
+                const prod = this.allProducts.find(p => p.id === Number(id));
+                return total + (prod ? Number(prod.harga) : 0);
+            }, 0);
+        },
+
+        get hematRp() {
+            const sum = this.sumHargaSatuan;
+            const hargaPaket = Number(this.form.harga) || 0;
+            return Math.max(0, sum - hargaPaket);
+        },
+
+        get hematPersen() {
+            const sum = this.sumHargaSatuan;
+            if (sum <= 0) return 0;
+            return Math.round((this.hematRp / sum) * 100);
+        },
+
+        formatRupiah(num) {
+            return 'Rp ' + Number(num || 0).toLocaleString('id-ID');
+        },
+
+        toggleProduct(id, checked) {
+            const numId = Number(id);
+            if (checked) {
+                if (!this.form.produk_ids.includes(numId)) {
+                    this.form.produk_ids.push(numId);
+                }
+            } else {
+                this.form.produk_ids = this.form.produk_ids.filter(i => i !== numId);
+            }
+        },
 
         resetFiles(url = null) {
             this.imageUrl = url;
@@ -163,7 +199,7 @@ function koleksiPanel() {
         openCreate() {
             this.mode = 'create';
             this.formAction = '{{ route('owner.koleksi.store') }}';
-            this.form = { title: '', description: '', harga: '', harga_coret: '', is_active: true, produk_ids: [] };
+            this.form = { title: '', description: '', harga: '', is_active: true, produk_ids: [] };
             this.resetFiles();
             this.open = true;
         },
@@ -175,7 +211,7 @@ function koleksiPanel() {
             this.formAction = '/owner/koleksi/' + id;
             this.form = {
                 title: coll.title, description: coll.description,
-                harga: coll.harga, harga_coret: coll.harga_coret,
+                harga: coll.harga,
                 is_active: coll.is_active,
                 produk_ids: coll.products ? coll.products.map(p => p.id) : [],
             };

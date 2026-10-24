@@ -8,6 +8,7 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class CollectionController extends Controller
 {
@@ -17,12 +18,12 @@ class CollectionController extends Controller
     {
         $collections = Collection::query()
             ->withCount('products')
-            ->with(['products:products.id'])
+            ->with(['products:products.id,products.nama,products.harga'])
             ->orderByDesc('id')
             ->paginate(10)
             ->withQueryString();
 
-        $allProducts = Product::query()->orderBy('nama')->get(['id', 'nama', 'brand', 'image']);
+        $allProducts = Product::query()->orderBy('nama')->get(['id', 'nama', 'brand', 'harga', 'image']);
 
         return view('owner.produk.koleksi', [
             'collections' => $collections,
@@ -35,10 +36,9 @@ class CollectionController extends Controller
         $data = $this->validateData($request, false);
 
         $collection = new Collection([
-            'title' => $data['title'],
+            'title'       => $data['title'],
             'description' => $data['description'] ?? null,
-            'harga' => $data['harga'],
-            'harga_coret' => $data['harga_coret'] ?? null,
+            'harga'       => $data['harga'],
         ]);
         $collection->slug = $this->uniqueSlug($data['title']);
         $collection->is_active = $request->boolean('is_active', true);
@@ -57,7 +57,6 @@ class CollectionController extends Controller
         $collection->title = $data['title'];
         $collection->description = $data['description'] ?? null;
         $collection->harga = $data['harga'];
-        $collection->harga_coret = $data['harga_coret'] ?? null;
         $collection->is_active = $request->boolean('is_active', true);
 
         if ($request->hasFile('image')) {
@@ -85,15 +84,26 @@ class CollectionController extends Controller
 
     private function validateData(Request $request, bool $isUpdate): array
     {
-        return $request->validate([
-            'title' => ['required', 'string', 'max:255'],
+        $validated = $request->validate([
+            'title'       => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'harga' => ['required', 'integer', 'min:0'],
-            'harga_coret' => ['nullable', 'integer', 'min:0'],
-            'image' => [$isUpdate ? 'nullable' : 'required', 'image', 'max:2048'],
-            'produk' => ['required', 'array', 'min:1'],
-            'produk.*' => ['integer', 'exists:products,id'],
+            'harga'       => ['required', 'integer', 'min:1'],
+            'image'       => [$isUpdate ? 'nullable' : 'required', 'image', 'max:2048'],
+            'produk'      => ['required', 'array', 'min:1'],
+            'produk.*'    => ['integer', 'exists:products,id'],
+        ], [
+            'harga.min'       => 'Harga paket minimal Rp1.',
+            'produk.required' => 'Pilih minimal satu produk isi paket bundling.',
         ]);
+
+        $sumHarga = (int) Product::whereIn('id', $validated['produk'])->sum('harga');
+        if ((int) $validated['harga'] >= $sumHarga) {
+            throw ValidationException::withMessages([
+                'harga' => 'Harga paket bundling (Rp ' . number_format($validated['harga'], 0, ',', '.') . ') harus lebih kecil dari jumlah harga produk isi (Rp ' . number_format($sumHarga, 0, ',', '.') . ').',
+            ]);
+        }
+
+        return $validated;
     }
 
     private function uniqueSlug(string $title): string

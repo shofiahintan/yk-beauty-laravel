@@ -72,22 +72,24 @@ class ProductController extends Controller
         $product->load(['variants', 'images']);
 
         return response()->json([
-            'id' => $product->id,
-            'nama' => $product->nama,
-            'brand' => $product->brand,
-            'kategori' => $product->kategori,
-            'harga' => $product->harga,
-            'harga_coret' => $product->harga_coret,
-            'badge' => $product->badge,
-            'badge_class' => $product->badge_class,
-            'deskripsi' => $product->deskripsi,
-            'stok' => $product->stok,
-            'is_active' => $product->is_active,
-            'image' => $product->image,
-            'image_url' => asset($product->image),
-            'variants' => $product->variants->pluck('label')->values(),
-            'gallery' => $product->images->map(fn ($img) => [
-                'id' => $img->id,
+            'id'            => $product->id,
+            'nama'          => $product->nama,
+            'brand'         => $product->brand,
+            'kategori'      => $product->kategori,
+            'harga'         => $product->harga,
+            'harga_normal'  => $product->harga_normal,
+            'diskon_persen' => $product->diskon_persen,
+            'coret'         => $product->coret,
+            'badge'         => $product->badge,
+            'badge_class'   => $product->badge_class,
+            'deskripsi'     => $product->deskripsi,
+            'stok'          => $product->stok,
+            'is_active'     => $product->is_active,
+            'image'         => $product->image,
+            'image_url'     => asset($product->image),
+            'variants'      => $product->variants->pluck('label')->values(),
+            'gallery'       => $product->images->map(fn ($img) => [
+                'id'  => $img->id,
                 'url' => asset($img->path),
             ])->values(),
         ]);
@@ -137,22 +139,28 @@ class ProductController extends Controller
 
     private function validateData(Request $request, bool $isUpdate): array
     {
-        return $request->validate([
-            'nama' => ['required', 'string', 'max:255'],
-            'brand' => ['required', 'string', 'max:100'],
-            'kategori' => ['required', 'string', 'max:100'],
-            'harga' => ['required', 'integer', 'min:0'],
-            'harga_coret' => ['nullable', 'integer', 'min:0'],
-            'badge' => ['nullable', 'string', 'max:50'],
-            'badge_class' => ['nullable', 'string', 'max:50'],
-            'deskripsi' => ['nullable', 'string'],
-            'stok' => ['required', 'integer', 'min:0'],
-            'image' => [$isUpdate ? 'nullable' : 'required', 'image', 'max:2048'],
-            'varian' => ['nullable', 'array'],
-            'varian.*' => ['nullable', 'string', 'max:100'],
-            'galeri' => ['nullable', 'array'],
-            'galeri.*' => ['image', 'max:2048'],
+        $validated = $request->validate([
+            'nama'          => ['required', 'string', 'max:255'],
+            'brand'         => ['required', 'string', 'max:100'],
+            'kategori'      => ['required', 'string', 'max:100'],
+            'harga_normal'  => ['required', 'integer', 'min:1'],
+            'diskon_persen' => ['nullable', 'integer', 'min:0', 'max:90'],
+            'badge'         => ['nullable', 'string', 'max:50'],
+            'badge_class'   => ['nullable', 'string', 'max:50'],
+            'deskripsi'     => ['nullable', 'string'],
+            'stok'          => ['required', 'integer', 'min:0'],
+            'image'         => [$isUpdate ? 'nullable' : 'required', 'image', 'max:2048'],
+            'varian'        => ['nullable', 'array'],
+            'varian.*'      => ['nullable', 'string', 'max:100'],
+            'galeri'        => ['nullable', 'array'],
+            'galeri.*'      => ['image', 'max:2048'],
         ]);
+
+        $diskon = isset($validated['diskon_persen']) && $validated['diskon_persen'] !== '' ? (int) $validated['diskon_persen'] : null;
+        $validated['diskon_persen'] = $diskon;
+        $validated['harga'] = Product::calculateSellingPrice((int) $validated['harga_normal'], $diskon);
+
+        return $validated;
     }
 
     private function uniqueSlug(string $nama): string

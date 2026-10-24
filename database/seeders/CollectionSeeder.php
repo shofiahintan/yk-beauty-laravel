@@ -13,11 +13,10 @@ class CollectionSeeder extends Seeder
         $coll = Collection::updateOrCreate(
             ['slug' => 'paket-daily-glowing'],
             [
-                'title' => 'Paket Daily Glowing',
+                'title'       => 'Paket Daily Glowing',
                 'description' => 'Paket bundling skincare pilihan harian Anda.',
-                'image' => 'assets/images/produk/paket1.png',
-                'harga' => 150000,
-                'harga_coret' => 165000,
+                'image'       => 'assets/images/produk/paket1.png',
+                'harga'       => 90000,
             ]
         );
 
@@ -31,11 +30,10 @@ class CollectionSeeder extends Seeder
         $coll2 = Collection::updateOrCreate(
             ['slug' => 'paket-bebas-jerawat'],
             [
-                'title' => 'Paket Bebas Jerawat',
+                'title'       => 'Paket Bebas Jerawat',
                 'description' => 'Rangkaian perawatan wajah berjerawat, dari pembersih sampai serum penenang.',
-                'image' => 'assets/images/produk/paket2.png',
-                'harga' => 140000,
-                'harga_coret' => 170000,
+                'image'       => 'assets/images/produk/paket2.png',
+                'harga'       => 140000,
             ]
         );
 

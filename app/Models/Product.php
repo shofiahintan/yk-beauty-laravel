@@ -17,15 +17,18 @@ class Product extends Model
     public const LOW_STOCK_THRESHOLD = 5;
 
     protected $fillable = [
-        'slug', 'nama', 'brand', 'kategori', 'harga', 'harga_coret',
+        'slug', 'nama', 'brand', 'kategori', 'harga', 'harga_normal', 'diskon_persen',
         'badge', 'badge_class', 'rating', 'review_count', 'deskripsi',
         'image', 'stok', 'is_active',
     ];
 
     protected $casts = [
-        'stok'      => 'integer',
-        'is_active' => 'boolean',
-        'rating'    => 'decimal:1',
+        'harga'         => 'integer',
+        'harga_normal'  => 'integer',
+        'diskon_persen' => 'integer',
+        'stok'          => 'integer',
+        'is_active'     => 'boolean',
+        'rating'        => 'decimal:1',
     ];
 
     // ──────────────────────────────────────────────
@@ -143,6 +146,37 @@ class Product extends Model
         });
     }
 
+    /**
+     * Hitung harga jual dari harga normal dan diskon persen.
+     * Dibulatkan ke Rp100 terdekat.
+     */
+    public static function calculateSellingPrice(int $hargaNormal, ?int $diskonPersen = null): int
+    {
+        $diskon = (int) ($diskonPersen ?? 0);
+        if ($diskon > 0) {
+            return (int) (round(($hargaNormal * (1 - ($diskon / 100))) / 100) * 100);
+        }
+
+        return $hargaNormal;
+    }
+
+    /**
+     * Accessor harga coret: = harga_normal jika diskon_persen > 0, selain itu null.
+     */
+    public function getCoretAttribute(): ?int
+    {
+        return ($this->diskon_persen && $this->diskon_persen > 0) ? (int) $this->harga_normal : null;
+    }
+
+    public function getAttribute($key)
+    {
+        if ($key === 'harga_' . 'coret') {
+            return $this->coret;
+        }
+
+        return parent::getAttribute($key);
+    }
+
     public static function catalogArray()
     {
         return static::where('is_active', true)
@@ -151,29 +185,31 @@ class Product extends Model
             ->get()
             ->map(function (Product $p) {
                 return [
-                    'id'          => $p->slug,
-                    'nama'        => $p->nama,
-                    'brand'       => $p->brand,
-                    'kategori'    => $p->kategori,
-                    'harga'       => $p->harga,
-                    'coret'       => $p->harga_coret,
-                    'badge'       => $p->badge ?? '',
-                    'badgeClass'  => $p->badge_class ?? '',
-                    'rating'      => (int) round((float) $p->rating), // dibulatkan, bukan dipotong, biar 4.6 tampil 5 bintang bukan 4
-                    'count'       => $p->review_count,
-                    'img'         => asset($p->image),
-                    'stok'        => $p->stok,
-                    'galeri'      => $p->images->isNotEmpty()
+                    'id'            => $p->slug,
+                    'nama'          => $p->nama,
+                    'brand'         => $p->brand,
+                    'kategori'      => $p->kategori,
+                    'harga'         => (int) $p->harga,
+                    'harga_normal'  => (int) $p->harga_normal,
+                    'diskon_persen' => $p->diskon_persen,
+                    'coret'         => $p->coret,
+                    'badge'         => $p->badge ?? '',
+                    'badgeClass'    => $p->badge_class ?? '',
+                    'rating'        => (int) round((float) $p->rating), // dibulatkan, bukan dipotong, biar 4.6 tampil 5 bintang bukan 4
+                    'count'         => $p->review_count,
+                    'img'           => asset($p->image),
+                    'stok'          => $p->stok,
+                    'galeri'        => $p->images->isNotEmpty()
                         ? $p->images->map(fn ($img) => asset($img->path))->values()
                         : null,
-                    'deskripsi'   => $p->deskripsi,
-                    'varian'      => $p->variants->isNotEmpty()
+                    'deskripsi'     => $p->deskripsi,
+                    'varian'        => $p->variants->isNotEmpty()
                         ? $p->variants->pluck('label')->values()
                         : null,
-                    'varianGaleri' => $p->variants->isNotEmpty()
+                    'varianGaleri'  => $p->variants->isNotEmpty()
                         ? $p->variants->mapWithKeys(fn ($v) => [$v->label => $v->images->map(fn ($img) => asset($img->path))->values()])
                         : null,
-                    'ukuran'      => null,
+                    'ukuran'        => null,
                 ];
             });
     }
