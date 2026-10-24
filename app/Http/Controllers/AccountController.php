@@ -25,6 +25,8 @@ class AccountController extends Controller
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'wa' => 'nullable|string|max:30',
             'alamat' => 'nullable|string|max:1000',
+            'kota' => 'nullable|string|max:100',
+            'kodepos' => 'nullable|string|max:20',
             'foto' => 'nullable|image|max:2048',
         ]);
 
@@ -32,6 +34,8 @@ class AccountController extends Controller
         $user->email = $validated['email'];
         $user->whatsapp = $validated['wa'] ?? null;
         $user->alamat = $validated['alamat'] ?? null;
+        $user->kota = $validated['kota'] ?? null;
+        $user->kodepos = $validated['kodepos'] ?? null;
 
         if ($request->hasFile('foto')) {
             $path = $request->file('foto')->store('avatars', 'public');
@@ -49,6 +53,8 @@ class AccountController extends Controller
                     'email' => $user->email,
                     'wa' => $user->whatsapp,
                     'alamat' => $user->alamat,
+                    'kota' => $user->kota,
+                    'kodepos' => $user->kodepos,
                     'foto' => $user->foto ? asset($user->foto) : null,
                 ],
             ]);

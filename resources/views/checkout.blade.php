@@ -49,12 +49,12 @@
               <div class="akun-form-row" style="margin-bottom:0;">
                 <div class="akun-form-group">
                   <label>{{ __('checkout_kota') }}</label>
-                  <input type="text" id="ckKota" placeholder="{{ __('checkout_ph_kota') }}">
+                  <input type="text" id="ckKota" placeholder="{{ __('checkout_ph_kota') }}" value="{{ auth()->user()?->kota ?? '' }}">
                   <div class="checkout-field-err" id="errCkKota" style="display:none;"></div>
                 </div>
                 <div class="akun-form-group">
                   <label>{{ __('checkout_kode_pos') }}</label>
-                  <input type="text" id="ckKodePos" placeholder="{{ __('checkout_ph_kodepos') }}">
+                  <input type="text" id="ckKodePos" placeholder="{{ __('checkout_ph_kodepos') }}" value="{{ auth()->user()?->kodepos ?? '' }}">
                   <div class="checkout-field-err" id="errCkKodepos" style="display:none;"></div>
                 </div>
               </div>
@@ -126,7 +126,9 @@
   const userProfile = {
     nama: @json(auth()->user()?->name ?? ''),
     wa: @json(auth()->user()?->whatsapp ?? ''),
-    alamat: @json(auth()->user()?->alamat ?? '')
+    alamat: @json(auth()->user()?->alamat ?? ''),
+    kota: @json(auth()->user()?->kota ?? ''),
+    kodepos: @json(auth()->user()?->kodepos ?? '')
   };
 </script>
 @endsection

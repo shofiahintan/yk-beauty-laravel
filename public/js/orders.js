@@ -1,6 +1,6 @@
-// ===== Pesanan — sumber data tunggal (localStorage), dipakai di checkout, riwayat & detail pesanan =====
-// Catatan: belum ada database/admin panel, jadi status pesanan baru selalu "diproses".
-// "Dibatalkan" bisa dipicu pembeli sendiri (tombol batalkan) selama masih berstatus diproses.
+// ===== Pesanan — pengelolaan data pesanan (database via OrderLifecycle dengan fallback localStorage) =====
+// Catatan: Pesanan tersimpan di database dan dikelola oleh panel owner & integrasi Midtrans.
+// localStorage hanya berfungsi sebagai fallback/cache klien sementara.
 const YK_ORDERS_KEY = 'yk_orders_v1';
 
 function ykGetOrders() {

@@ -60,6 +60,17 @@
             <textarea id="akunAlamat" name="alamat" rows="3">{{ old('alamat', auth()->user()?->alamat ?? '') }}</textarea>
           </div>
 
+          <div class="akun-form-row">
+            <div class="akun-form-group">
+              <label>{{ __('Kota / Kabupaten') }}</label>
+              <input type="text" id="akunKota" name="kota" value="{{ old('kota', auth()->user()?->kota ?? '') }}">
+            </div>
+            <div class="akun-form-group">
+              <label>{{ __('Kode Pos') }}</label>
+              <input type="text" id="akunKodePos" name="kodepos" value="{{ old('kodepos', auth()->user()?->kodepos ?? '') }}">
+            </div>
+          </div>
+
           <div class="akun-form-divider"></div>
 
           <div class="akun-save-row">
@@ -84,6 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const waEl = document.getElementById('akunWa');
   const emailEl = document.getElementById('akunEmail');
   const alamatEl = document.getElementById('akunAlamat');
+  const kotaEl = document.getElementById('akunKota');
+  const kodePosEl = document.getElementById('akunKodePos');
   const avatarPreview = document.getElementById('akunAvatarPreview');
   const fotoInput = document.getElementById('akunFotoInput');
 
@@ -129,6 +142,8 @@ document.addEventListener('DOMContentLoaded', () => {
         wa: waEl.value.trim(),
         email: emailEl.value.trim(),
         alamat: alamatEl.value.trim(),
+        kota: kotaEl ? kotaEl.value.trim() : '',
+        kodepos: kodePosEl ? kodePosEl.value.trim() : '',
         foto: imgEl ? imgEl.src : null
       };
       try { localStorage.setItem('yk_profile_v1', JSON.stringify(data)); } catch (err) {}

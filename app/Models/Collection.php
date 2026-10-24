@@ -67,21 +67,35 @@ class Collection extends Model
         return parent::getAttribute($key);
     }
 
+    /**
+     * Paket bundling dianggap tersedia HANYA JIKA:
+     * - Memiliki minimal 1 produk di dalamnya
+     * - Semua produk di dalamnya aktif (is_active = true)
+     * - Semua produk di dalamnya memiliki stok > 0
+     */
+    public function isInStock(): bool
+    {
+        if ($this->products->isEmpty()) {
+            return false;
+        }
+
+        foreach ($this->products as $product) {
+            if (! $product->is_active || (int) $product->stok <= 0) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public static function catalogArray()
     {
-        $collections = self::with(['products' => function ($q) {
-            $q->where('is_active', true);
-        }])->where('is_active', true)->get();
+        $collections = self::with('products')->where('is_active', true)->get();
 
         return $collections->map(function ($c) {
             $items = $c->products->map(fn($p) => $p->nama)->all();
-            
-            // Stok paket adalah minimum dari stok produk yang ada di dalamnya.
-            if ($c->products->isEmpty()) {
-                $stok = 0;
-            } else {
-                $stok = $c->products->min('stok');
-            }
+            $inStock = $c->isInStock();
+            $stok = $inStock ? (int) $c->products->min('stok') : 0;
 
             return [
                 'id'          => $c->slug,
@@ -93,7 +107,7 @@ class Collection extends Model
                 'img'         => asset($c->image ?? 'assets/images/landing9.jpg'),
                 'items'       => $items,
                 'stok'        => $stok,
-                'inStock'     => $stok > 0,
+                'inStock'     => $inStock,
             ];
         })->values()->all();
     }

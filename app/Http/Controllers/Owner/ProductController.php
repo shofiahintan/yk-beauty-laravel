@@ -57,11 +57,16 @@ class ProductController extends Controller
     {
         $data = $this->validateData($request, false);
 
+        $initialStock = (int) ($data['stok'] ?? 0);
+
         $product = new Product($data);
+        $product->stok = 0; // Mulai dari 0 agar pencatatan stok awal tercatat via adjustStock
         $product->slug = $this->uniqueSlug($data['nama']);
         $product->is_active = $request->boolean('is_active', true);
         $product->image = $this->storeImage($request->file('image'));
         $product->save();
+
+        Product::adjustStock($product, $initialStock, 'stok awal', null, auth()->id());
 
         $this->syncVariants($product, $request);
         $this->syncGallery($product, $request);
@@ -108,6 +113,10 @@ class ProductController extends Controller
     {
         $data = $this->validateData($request, true, $product);
 
+        $oldStock = (int) $product->stok;
+        $newStock = isset($data['stok']) ? (int) $data['stok'] : $oldStock;
+        unset($data['stok']);
+
         $product->fill($data);
         $product->is_active = $request->boolean('is_active', true);
 
@@ -118,6 +127,11 @@ class ProductController extends Controller
         }
 
         $product->save();
+
+        $delta = $newStock - $oldStock;
+        if ($delta !== 0) {
+            Product::adjustStock($product, $delta, 'edit owner', null, auth()->id());
+        }
 
         $this->syncVariants($product, $request);
         $this->removeGalleryImages($product, $request);

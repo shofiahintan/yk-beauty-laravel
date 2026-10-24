@@ -61,11 +61,10 @@ document.addEventListener('click', (e) => {
 });
 
 // ===== Cart logic (event delegation, jalan di semua halaman) =====
-// .btn-cart dengan data-id -> masuk ke keranjang beneran (localStorage, lihat js/cart.js)
-// .koleksi-add-btn (paket bundling di koleksi-detail) -> masih visual-only, belum ada data produk individual
+// .btn-cart dan .koleksi-add-btn -> masuk ke keranjang (database/localStorage via js/cart.js)
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.btn-cart, .koleksi-add-btn');
-  if (btn && !btn.classList.contains('added')) {
+  if (btn && !btn.disabled && !btn.classList.contains('added')) {
     const id = btn.dataset.id;
     const type = btn.dataset.type || 'product';
     if (id && typeof ykAddToCart === "function") {

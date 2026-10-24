@@ -14,7 +14,11 @@
       </div>
 
       <div class="koleksi-detail-info">
-        <span class="koleksi-badge-save">{{ __('koleksi_badge_save') }}</span>
+        @if ($collection && ! $collection->isInStock())
+          <span class="koleksi-badge-save" style="background:#555; color:#fff;">{{ __('Habis') }}</span>
+        @else
+          <span class="koleksi-badge-save">{{ __('koleksi_badge_save') }}</span>
+        @endif
         <h1>{{ $collection?->title ?? __('koleksi_page_title') }}</h1>
         <p class="koleksi-desc">
           {{ $collection?->description ?? __('koleksi_desc') }}
@@ -29,11 +33,11 @@
         </div>
 
         @php
-          $bundleInStock = $collection->products->isNotEmpty() && $collection->products->min('stok') > 0;
+          $bundleInStock = $collection->isInStock();
         @endphp
         <button class="koleksi-add-btn" id="btnTambahPaket" type="button"
                 data-id="{{ $collection->slug }}" data-type="bundle"
-                @if(!$bundleInStock) disabled @endif>
+                @if(!$bundleInStock) disabled style="opacity:0.6; cursor:not-allowed;" @endif>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h2l2.4 12.4a2 2 0 002 1.6h7.7a2 2 0 002-1.6L21 8H6"/><circle cx="10" cy="21" r="1.3"/><circle cx="18" cy="21" r="1.3"/></svg>
           {{ $bundleInStock ? __('koleksi_add_btn') : __('Habis') }}
         </button>

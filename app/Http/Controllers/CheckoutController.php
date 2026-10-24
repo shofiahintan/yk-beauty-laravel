@@ -110,12 +110,12 @@ class CheckoutController extends Controller
 
                 if ($it['type'] === 'bundle') {
                     $collection = Collection::with(['products' => function ($q) {
-                        $q->where('is_active', true)->lockForUpdate();
+                        $q->lockForUpdate();
                     }])->where('slug', $it['slug'])->where('is_active', true)->first();
 
-                    if (! $collection || $collection->products->isEmpty()) {
+                    if (! $collection || $collection->products->isEmpty() || ! $collection->isInStock()) {
                         throw ValidationException::withMessages([
-                            'items' => 'Paket Bundling "' . $it['slug'] . '" tidak tersedia.',
+                            'items' => 'Paket Bundling "' . $it['slug'] . '" tidak tersedia atau stok isinya habis.',
                         ]);
                     }
 

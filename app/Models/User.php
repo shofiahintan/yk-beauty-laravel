@@ -27,6 +27,8 @@ class User extends Authenticatable
         'is_active',
         'whatsapp', // dulu "wa" di akun.js
         'alamat',
+        'kota',
+        'kodepos',
         'foto',
     ];
 

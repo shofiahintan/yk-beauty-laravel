@@ -31,10 +31,13 @@
         @foreach ($collections as $collection)
           @php
             $hemat = $collection->hemat;
+            $inStock = $collection->isInStock();
           @endphp
-          <a href="{{ route('koleksi.detail', $collection->slug) }}" class="koleksi-card">
+          <a href="{{ route('koleksi.detail', $collection->slug) }}" class="koleksi-card {{ !$inStock ? 'is-out-of-stock' : '' }}">
             <div class="koleksi-card-img-wrap">
-              @if ($hemat > 0)
+              @if (! $inStock)
+                <span class="koleksi-card-badge" style="background:#555; color:#fff;">{{ __('Habis') }}</span>
+              @elseif ($hemat > 0)
                 <span class="koleksi-card-badge">{{ __('Hemat') }} {{ formatRupiah($hemat) }}</span>
               @endif
               <img src="{{ asset($collection->image ?? 'assets/images/landing9.jpg') }}" alt="{{ $collection->title }}">
@@ -48,7 +51,7 @@
                   <span class="harga-coret">{{ formatRupiah($collection->coret) }}</span>
                 @endif
               </div>
-              <span class="koleksi-card-link">{{ __('koleksi_card_link') }}</span>
+              <span class="koleksi-card-link">{{ $inStock ? __('koleksi_card_link') : __('Habis') }}</span>
             </div>
           </a>
         @endforeach

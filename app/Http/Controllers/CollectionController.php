@@ -10,6 +10,7 @@ class CollectionController extends Controller
     public function index()
     {
         $collections = Collection::where('is_active', true)
+            ->with('products')
             ->orderByDesc('id')
             ->get();
 

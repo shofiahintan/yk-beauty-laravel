@@ -18,9 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let qrisInterval = null;
   let ewalletInterval = null;
 
-  // ---- Prefill nama/WA dari profil kalau sudah pernah disimpan ----
-  if (userProfile.nama) document.getElementById('ckNama').value = userProfile.nama;
-  if (userProfile.wa) document.getElementById('ckWa').value = userProfile.wa;
+  // ---- Prefill nama/WA/alamat/kota/kodepos dari profil kalau sudah pernah disimpan ----
+  if (userProfile.nama && !document.getElementById('ckNama').value) document.getElementById('ckNama').value = userProfile.nama;
+  if (userProfile.wa && !document.getElementById('ckWa').value) document.getElementById('ckWa').value = userProfile.wa;
+  if (userProfile.alamat && !document.getElementById('ckAlamat').value) document.getElementById('ckAlamat').value = userProfile.alamat;
+  if (userProfile.kota && !document.getElementById('ckKota').value) document.getElementById('ckKota').value = userProfile.kota;
+  if (userProfile.kodepos && !document.getElementById('ckKodePos').value) document.getElementById('ckKodePos').value = userProfile.kodepos;
 
   // ---- Bangun line-items dari keranjang ----
   let hasError = false;
