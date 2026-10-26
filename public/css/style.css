@@ -1963,168 +1963,620 @@ button, .btn, [class*="-btn"], input[type="submit"], input[type="button"] {
 }
 
 /* ===== REFUND STYLES ===== */
+
+/* Status Box di Halaman Detail Pesanan */
 .pesanan-refund-box {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 20px 24px;
   border-radius: var(--radius);
   margin-bottom: 24px;
-  border-left: 5px solid transparent;
+  border: 1px solid var(--line);
   background: #fff;
-  box-shadow: 0 4px 18px rgba(74, 18, 32, 0.05);
+  box-shadow: 0 4px 20px rgba(74, 18, 32, 0.04);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+.pesanan-refund-box:hover {
+  box-shadow: 0 8px 26px rgba(74, 18, 32, 0.08);
 }
 .pesanan-refund-box.refund-diajukan {
   background: #FFFDF5;
-  border-left-color: #D97706;
+  border-color: #FDE68A;
 }
 .pesanan-refund-box.refund-disetujui {
   background: #FDF1EF;
-  border-left-color: var(--maroon-accent);
+  border-color: var(--pink-200);
 }
 .pesanan-refund-box.refund-ditolak {
-  background: #FDF2F4;
-  border-left-color: #BE123C;
+  background: #FFF1F2;
+  border-color: #FECDD3;
 }
 .pesanan-refund-box.refund-selesai {
   background: #F0FDF4;
-  border-left-color: #15803D;
+  border-color: #BBF7D0;
 }
+
+.pesanan-refund-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.pesanan-refund-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  letter-spacing: 0.2px;
+}
+.refund-diajukan .pesanan-refund-badge {
+  background: #FEF3C7;
+  color: #B45309;
+}
+.refund-disetujui .pesanan-refund-badge {
+  background: var(--pink-200);
+  color: var(--maroon-900);
+}
+.refund-ditolak .pesanan-refund-badge {
+  background: #FFE4E6;
+  color: #BE123C;
+}
+.refund-selesai .pesanan-refund-badge {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.pesanan-refund-date {
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-weight: 400;
+}
+
+.pesanan-refund-card-body {
+  padding: 20px 22px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
 .pesanan-refund-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 .refund-diajukan .pesanan-refund-icon { background: #FEF3C7; color: #D97706; }
-.refund-disetujui .pesanan-refund-icon { background: var(--pink-200); color: var(--maroon-900); }
+.refund-disetujui .pesanan-refund-icon { background: var(--pink-100); color: var(--maroon-900); }
 .refund-ditolak .pesanan-refund-icon { background: #FFE4E6; color: #BE123C; }
 .refund-selesai .pesanan-refund-icon { background: #DCFCE7; color: #15803D; }
 
-.pesanan-refund-content { flex: 1; }
+.pesanan-refund-content {
+  flex: 1;
+}
 .pesanan-refund-content h4 {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 4px;
-  color: var(--ink);
+  color: var(--maroon-900);
+  letter-spacing: -0.2px;
 }
-.pesanan-refund-content p {
+.pesanan-refund-desc {
   font-size: 13.5px;
   color: var(--ink-soft);
-  margin-bottom: 6px;
+  margin-bottom: 12px;
   line-height: 1.5;
 }
-.pesanan-refund-meta {
-  font-size: 13px;
-  color: var(--maroon-900);
-  font-weight: 500;
+
+/* Breakdown Nominal & Meta */
+.pesanan-refund-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+  background: #fff;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
 }
+.pesanan-refund-grid-item {
+  display: flex;
+  flex-direction: column;
+}
+.pesanan-refund-grid-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+.pesanan-refund-grid-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.pesanan-refund-grid-val.is-total {
+  color: var(--maroon-accent);
+}
+
 .pesanan-refund-note {
   font-size: 13px;
-  background: rgba(0,0,0,0.03);
-  padding: 8px 12px;
-  border-radius: 8px;
-  margin-top: 6px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px dashed var(--line);
+  margin-top: 10px;
+  color: var(--ink);
+  line-height: 1.5;
 }
+.refund-ditolak .pesanan-refund-note {
+  background: #FFF5F5;
+  border-color: #FECDD3;
+  color: #991B1B;
+}
+
 .pesanan-refund-sub {
   font-size: 12px;
   color: var(--ink-soft);
-  margin-top: 4px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-/* Modal Refund Overlay & Content */
+/* ===== MODAL REFUND STYLES ===== */
 .yk-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(46, 19, 25, 0.6);
-  backdrop-filter: blur(4px);
-  z-index: 9999;
+  background: rgba(46, 19, 25, 0.65);
+  backdrop-filter: blur(5px);
+  z-index: 99999;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  transition: opacity 0.25s ease;
 }
 .yk-modal-dialog {
   background: #fff;
   border-radius: 24px;
   width: 100%;
-  max-width: 560px;
+  max-width: 600px;
   max-height: 90vh;
   display: flex;
-  flex-col;
+  flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
-  animation: ykModalFadeIn 0.25s ease-out;
+  box-shadow: 0 24px 50px rgba(74, 18, 32, 0.22);
+  animation: ykModalSlideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
-@keyframes ykModalFadeIn {
-  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+@keyframes ykModalSlideIn {
+  from { opacity: 0; transform: scale(0.96) translateY(14px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
+
 .yk-modal-header {
   padding: 20px 24px;
   border-bottom: 1px solid var(--line);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 16px;
+  background: #fff;
+  flex-shrink: 0;
 }
-.yk-modal-header h3 {
-  font-size: 19px;
-  font-weight: 600;
+.yk-modal-header-text h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 700;
   color: var(--maroon-900);
+  margin: 0 0 2px 0;
+  line-height: 1.2;
+}
+.yk-modal-sub {
+  font-size: 12.5px;
+  color: var(--ink-soft);
   margin: 0;
 }
+
 .yk-modal-close {
-  background: none;
-  border: none;
-  font-size: 24px;
-  line-height: 1;
+  background: var(--pink-50);
+  border: 1px solid var(--line);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--ink-soft);
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 8px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
 }
 .yk-modal-close:hover {
-  background: var(--pink-50);
-  color: var(--ink);
+  background: var(--maroon-accent);
+  color: #fff;
+  border-color: var(--maroon-accent);
 }
+
 .yk-modal-body {
   padding: 24px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
+
+/* Radio Cards untuk Pilihan Alasan */
+.yk-reason-group-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.yk-reason-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.yk-reason-card {
+  position: relative;
+  display: block;
+  cursor: pointer;
+  margin: 0;
+}
+.yk-reason-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.yk-reason-card-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+.yk-reason-card:hover .yk-reason-card-inner {
+  border-color: var(--pink-200);
+  background: var(--pink-50);
+}
+.yk-reason-radio:checked + .yk-reason-card-inner {
+  border-color: var(--maroon-accent);
+  background: #FDF1EF;
+  box-shadow: 0 0 0 3px rgba(140, 46, 60, 0.12);
+}
+.yk-reason-radio:focus-visible + .yk-reason-card-inner {
+  outline: 2px solid var(--maroon-accent);
+  outline-offset: 2px;
+}
+
+.yk-reason-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--pink-100);
+  color: var(--maroon-900);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.yk-reason-radio:checked + .yk-reason-card-inner .yk-reason-icon {
+  background: var(--maroon-accent);
+  color: #fff;
+}
+.yk-reason-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.yk-reason-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.yk-reason-desc {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+  line-height: 1.3;
+}
+.yk-reason-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.yk-reason-radio:checked + .yk-reason-card-inner .yk-reason-check {
+  border-color: var(--maroon-accent);
+  background: var(--maroon-accent);
+  color: #fff;
+}
+
+/* Form Controls & Labels */
 .yk-form-group {
-  margin-bottom: 18px;
+  margin: 0;
 }
 .yk-form-group label {
   display: block;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink);
   margin-bottom: 6px;
 }
 .yk-form-control {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--line);
   border-radius: 12px;
   font-size: 13.5px;
   color: var(--ink);
+  background: #fff;
   transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
 }
 .yk-form-control:focus {
   outline: none;
   border-color: var(--maroon-accent);
   box-shadow: 0 0 0 3px rgba(140, 46, 60, 0.15);
 }
-.yk-form-hint {
+.yk-form-control.is-invalid {
+  border-color: #BE123C;
+  background: #FFF5F5;
+}
+.yk-field-error {
   display: block;
+  font-size: 12px;
+  color: #BE123C;
+  font-weight: 500;
+  margin-top: 5px;
+}
+.yk-char-counter {
   font-size: 11.5px;
   color: var(--ink-soft);
-  margin-top: 4px;
+  font-weight: 400;
 }
+
+/* Upload Area & Thumbnail Preview */
+.yk-upload-dropzone {
+  border: 1.5px dashed var(--line);
+  border-radius: 14px;
+  padding: 20px 16px;
+  text-align: center;
+  background: #FCFAF9;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+.yk-upload-dropzone:hover {
+  border-color: var(--maroon-accent);
+  background: var(--pink-50);
+}
+.yk-upload-icon {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto 8px auto;
+  border-radius: 50%;
+  background: var(--pink-100);
+  color: var(--maroon-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.yk-upload-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--maroon-900);
+  margin-bottom: 2px;
+}
+.yk-upload-hint {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+.yk-file-hidden {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.yk-thumbnails-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+.yk-thumbnail-item {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+.yk-thumbnail-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.yk-thumb-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(46, 19, 25, 0.75);
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  transition: background 0.15s ease;
+}
+.yk-thumb-remove:hover {
+  background: #BE123C;
+}
+
+/* Rekening Tujuan Box */
+.yk-bank-box {
+  background: #FAF7F5;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+}
+.yk-bank-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.yk-bank-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--pink-100);
+  color: var(--maroon-900);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.yk-bank-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 2px 0;
+}
+.yk-bank-note {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  line-height: 1.4;
+  margin: 0;
+}
+.yk-bank-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+/* Metode Pembayaran Asal Card */
+.yk-orig-payment-box {
+  background: var(--pink-50);
+  border: 1px solid var(--pink-200);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.yk-orig-payment-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--pink-100);
+  color: var(--maroon-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.yk-orig-payment-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--maroon-900);
+  margin: 0 0 2px 0;
+}
+.yk-orig-payment-desc {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Ringkasan Kebijakan Box */
+.yk-policy-box {
+  background: #FCFAF9;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.yk-policy-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--maroon-900);
+  margin-bottom: 8px;
+}
+.yk-policy-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.yk-policy-list li {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+  position: relative;
+  padding-left: 14px;
+}
+.yk-policy-list li::before {
+  content: '•';
+  position: absolute;
+  left: 3px;
+  color: var(--maroon-accent);
+  font-weight: bold;
+}
+.yk-policy-link {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--maroon-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.15s;
+}
+.yk-policy-link:hover {
+  color: var(--maroon-900);
+  text-decoration: underline;
+}
+
+/* Modal Footer */
 .yk-modal-footer {
   padding: 16px 24px;
   border-top: 1px solid var(--line);
@@ -2132,4 +2584,62 @@ button, .btn, [class*="-btn"], input[type="submit"], input[type="button"] {
   justify-content: flex-end;
   gap: 12px;
   background: var(--cream);
+  flex-shrink: 0;
+}
+.yk-spinner {
+  animation: ykSpin 0.75s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes ykSpin {
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive: Mobile Bottom Sheet (<= 640px & 375px) */
+@media (max-width: 640px) {
+  .yk-modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .yk-modal-dialog {
+    max-width: 100%;
+    width: 100%;
+    max-height: 88vh;
+    border-radius: 24px 24px 0 0;
+    margin: 0;
+    box-shadow: 0 -8px 30px rgba(74, 18, 32, 0.25);
+  }
+  .yk-modal-header {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 10;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    padding: 16px 20px;
+  }
+  .yk-modal-body {
+    padding: 18px 20px;
+    gap: 16px;
+  }
+  .yk-modal-footer {
+    position: sticky;
+    bottom: 0;
+    background: var(--cream);
+    z-index: 10;
+    box-shadow: 0 -4px 14px rgba(74, 18, 32, 0.06);
+    padding: 14px 20px;
+  }
+  .yk-modal-footer .btn {
+    flex: 1;
+    justify-content: center;
+  }
+  .pesanan-refund-card-body {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .pesanan-refund-grid {
+    grid-template-columns: 1fr;
+  }
 }
