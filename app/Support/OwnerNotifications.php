@@ -44,6 +44,23 @@ class OwnerNotifications
             ]);
         }
 
+        $refunds = \App\Models\Refund::with(['order', 'user'])
+            ->where('status', \App\Models\Refund::STATUS_DIAJUKAN)
+            ->latest()
+            ->take($limit)
+            ->get();
+
+        foreach ($refunds as $refund) {
+            $items->push([
+                'key' => 'refund:'.$refund->id,
+                'type' => 'refund',
+                'title' => 'Pengajuan refund baru',
+                'text' => 'Pesanan #'.$refund->order->order_code.' · '.$refund->alasan_label.' ('.$refund->user->name.')',
+                'time' => $refund->created_at ?? now(),
+                'url' => route('owner.notifikasi.open', ['type' => 'refund', 'id' => $refund->id]),
+            ]);
+        }
+
         $products = Product::where('is_active', true)
             ->where('stok', '<', Product::LOW_STOCK_THRESHOLD)
             ->orderBy('stok')

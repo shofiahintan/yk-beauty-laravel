@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
+use App\Models\Refund;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -36,6 +37,7 @@ class OrderLifecycle
                         'paid_at'        => now(),
                     ]);
                     self::logHistory($order, Order::STATUS_DIBATALKAN, 'Pembayaran diterima setelah pesanan dibatalkan');
+                    RefundService::createAutomaticRefund($order, Refund::ALASAN_BATAL_SEBELUM_KIRIM, 'Pembayaran diterima setelah pesanan dibatalkan');
                     return;
                 }
 
@@ -47,6 +49,18 @@ class OrderLifecycle
                 ]);
 
                 self::logHistory($order, Order::STATUS_DIPROSES, 'Pembayaran dikonfirmasi oleh Midtrans');
+
+            } elseif (in_array($transactionStatus, ['refund', 'partial_refund'], true)) {
+                // Webhook refund Midtrans: tidak ubah status apa pun, catat satu riwayat (idempotent)
+                $catatan = 'Notifikasi Midtrans: ' . $transactionStatus;
+                $alreadyLogged = OrderStatusHistory::where('order_id', $order->id)
+                    ->where('catatan', $catatan)
+                    ->exists();
+
+                if (! $alreadyLogged) {
+                    self::logHistory($order, $order->status, $catatan);
+                }
+                return;
 
             } elseif (in_array($transactionStatus, ['cancel', 'deny', 'expire'], true)) {
                 if ($order->payment_status === Order::PAYMENT_PAID) {
@@ -71,7 +85,7 @@ class OrderLifecycle
     }
 
     /**
-     * Batalkan pesanan dan kembalikan stok (idempotent, hanya dari menunggu_pembayaran).
+     * Batalkan pesanan dan kembalikan stok (idempotent, hanya dari menunggu_pembayaran/diproses).
      */
     public static function cancel(Order $order, string $alasan = 'Dibatalkan'): void
     {
@@ -82,12 +96,19 @@ class OrderLifecycle
                 return; // Sudah dibatalkan
             }
 
+            $wasPaid = $order->isPaid();
+
             // Kembalikan stok
             $order->load('items');
             $order->restoreStock();
 
             $order->update(['status' => Order::STATUS_DIBATALKAN]);
             self::logHistory($order, Order::STATUS_DIBATALKAN, $alasan);
+
+            // Jika pesanan sudah lunas dibatalkan, buat refund otomatis oleh sistem
+            if ($wasPaid) {
+                RefundService::createAutomaticRefund($order, Refund::ALASAN_BATAL_SEBELUM_KIRIM, 'Pesanan lunas dibatalkan');
+            }
         });
     }
 
@@ -96,6 +117,11 @@ class OrderLifecycle
      */
     public static function transition(Order $order, string $newStatus, ?string $catatan = null): void
     {
+        if ($newStatus === Order::STATUS_DIBATALKAN) {
+            self::cancel($order, $catatan ?? 'Status diubah ke dibatalkan oleh owner');
+            return;
+        }
+
         DB::transaction(function () use ($order, $newStatus, $catatan) {
             $order = Order::lockForUpdate()->findOrFail($order->id);
             $order->update(['status' => $newStatus]);

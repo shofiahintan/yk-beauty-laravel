@@ -92,10 +92,10 @@
         <div class="divide-y divide-pink-50">
             @forelse ($produkTerlaris as $p)
                 <div class="py-3 flex items-center justify-between gap-3">
-                    <p class="text-[13.5px] text-ink-900 truncate">{{ $p->nama }}</p>
+                    <p class="text-[13.5px] text-ink-900 truncate">{{ data_get($p, 'nama') }}</p>
                     <div class="text-right shrink-0">
-                        <p class="text-[13px] text-ink-900">{{ $p->total_qty }} terjual</p>
-                        <p class="text-[11.5px] text-ink-soft whitespace-nowrap">{{ formatRupiahOwner($p->total_omset) }}</p>
+                        <p class="text-[13px] text-ink-900">{{ data_get($p, 'total_qty') }} terjual</p>
+                        <p class="text-[11.5px] text-ink-soft whitespace-nowrap">{{ formatRupiahOwner(data_get($p, 'total_omset')) }}</p>
                     </div>
                 </div>
             @empty

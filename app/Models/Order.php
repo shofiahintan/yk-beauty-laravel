@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 class Order extends Model
@@ -22,10 +23,21 @@ class Order extends Model
     public const STEPPER = [self::STATUS_MENUNGGU, self::STATUS_DIPROSES, self::STATUS_DIKIRIM, self::STATUS_SELESAI];
 
     // Konstanta payment_status
-    public const PAYMENT_PENDING  = 'pending';
-    public const PAYMENT_PAID     = 'paid';
-    public const PAYMENT_FAILED   = 'failed';
-    public const PAYMENT_EXPIRED  = 'expired';
+    public const PAYMENT_PENDING        = 'pending';
+    public const PAYMENT_PAID           = 'paid';
+    public const PAYMENT_FAILED         = 'failed';
+    public const PAYMENT_EXPIRED        = 'expired';
+    public const PAYMENT_REFUNDED       = 'refunded';
+    public const PAYMENT_PARTIAL_REFUND = 'partial_refund';
+
+    public const PAYMENT_STATUSES = [
+        self::PAYMENT_PENDING        => ['label' => 'Menunggu Pembayaran', 'badge' => 'bg-pink-100 text-maroon-900'],
+        self::PAYMENT_PAID           => ['label' => 'Lunas', 'badge' => 'bg-maroon-900 text-white'],
+        self::PAYMENT_FAILED         => ['label' => 'Gagal', 'badge' => 'bg-pink-50 text-ink-soft'],
+        self::PAYMENT_EXPIRED        => ['label' => 'Kedaluwarsa', 'badge' => 'bg-pink-50 text-ink-soft'],
+        self::PAYMENT_REFUNDED       => ['label' => 'Refund Penuh', 'badge' => 'bg-pink-50 text-ink-soft'],
+        self::PAYMENT_PARTIAL_REFUND => ['label' => 'Refund Sebagian', 'badge' => 'bg-pink-200 text-maroon-900'],
+    ];
 
     public const STATUSES = [
         self::STATUS_MENUNGGU  => ['label' => 'Menunggu Pembayaran', 'badge' => 'bg-pink-100 text-maroon-900'],
@@ -37,14 +49,17 @@ class Order extends Model
 
     protected $fillable = [
         'order_code', 'user_id', 'status', 'subtotal', 'shipping_cost', 'total',
+        'refunded_barang', 'refunded_ongkir',
         'shipping_method', 'payment_method', 'kurir', 'nomor_resi',
         'buyer_nama', 'buyer_wa', 'buyer_alamat', 'buyer_kota', 'buyer_kodepos',
         'payment_status', 'midtrans_order_id', 'snap_token', 'paid_at', 'expires_at',
     ];
 
     protected $casts = [
-        'paid_at'    => 'datetime',
-        'expires_at' => 'datetime',
+        'paid_at'         => 'datetime',
+        'expires_at'      => 'datetime',
+        'refunded_barang' => 'integer',
+        'refunded_ongkir' => 'integer',
     ];
 
     // ──────────────────────────────────────────────
@@ -57,7 +72,11 @@ class Order extends Model
     public function scopeCounted(Builder $query): Builder
     {
         return $query
-            ->where('payment_status', self::PAYMENT_PAID)
+            ->whereIn('payment_status', [
+                self::PAYMENT_PAID,
+                self::PAYMENT_PARTIAL_REFUND,
+                self::PAYMENT_REFUNDED,
+            ])
             ->where('status', '!=', self::STATUS_DIBATALKAN);
     }
 
@@ -109,6 +128,36 @@ class Order extends Model
         return self::STATUSES[$this->status]['badge'] ?? 'bg-pink-100 text-maroon-900';
     }
 
+    public function paymentStatusLabel(): string
+    {
+        return self::PAYMENT_STATUSES[$this->payment_status]['label'] ?? ucfirst($this->payment_status);
+    }
+
+    public function paymentStatusBadgeClasses(): string
+    {
+        return self::PAYMENT_STATUSES[$this->payment_status]['badge'] ?? 'bg-pink-100 text-maroon-900';
+    }
+
+    public function remainingRefundable(): int
+    {
+        return max(0, (int) $this->total - (int) $this->refunded_barang - (int) $this->refunded_ongkir);
+    }
+
+    public function remainingRefundableBarang(): int
+    {
+        return max(0, (int) $this->subtotal - (int) $this->refunded_barang);
+    }
+
+    public function remainingRefundableOngkir(): int
+    {
+        return max(0, (int) $this->shipping_cost - (int) $this->refunded_ongkir);
+    }
+
+    public function canApplyRefund(): bool
+    {
+        return \App\Support\RefundService::canApply($this);
+    }
+
     // Butuh kurir + nomor resi sebelum status boleh dipindah ke "Dikirim" (sesuai mockup)
     public function needsShippingInfo(): bool
     {
@@ -132,6 +181,16 @@ class Order extends Model
     public function statusHistories(): HasMany
     {
         return $this->hasMany(OrderStatusHistory::class)->latest();
+    }
+
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(Refund::class)->latest();
+    }
+
+    public function latestRefund(): HasOne
+    {
+        return $this->hasOne(Refund::class)->latestOfMany();
     }
 
     // ──────────────────────────────────────────────
@@ -209,6 +268,23 @@ class Order extends Model
                 'kota'    => $this->buyer_kota,
                 'kodepos' => $this->buyer_kodepos,
             ],
+            'refundedBarang' => (int) $this->refunded_barang,
+            'refundedOngkir' => (int) $this->refunded_ongkir,
+            'canApplyRefund' => $this->canApplyRefund(),
+            'refunds'        => $this->refunds->map(fn (Refund $r) => [
+                'id'            => $r->id,
+                'status'        => $r->status,
+                'statusLabel'   => $r->status_label,
+                'statusBadge'   => $r->status_badge,
+                'alasan'        => $r->alasan,
+                'alasanLabel'   => $r->alasan_label,
+                'keterangan'    => $r->keterangan,
+                'nominalBarang' => (int) $r->nominal_barang,
+                'nominalOngkir' => (int) $r->nominal_ongkir,
+                'totalNominal'  => (int) $r->totalNominal(),
+                'catatanOwner'  => $r->catatan_owner,
+                'createdAt'     => $r->created_at?->translatedFormat('d M Y, H:i'),
+            ])->values(),
         ];
     }
 }

@@ -18,20 +18,20 @@ class DashboardController extends Controller
         $nextWeek = $startOfWeek->copy()->addWeek();
         $startOfLastWeek = $startOfWeek->copy()->subWeek();
 
-        $pendapatanHariIni = (int) Order::paidBetween($today, $tomorrow)->sum('subtotal');
-        $pendapatanKemarin = (int) Order::paidBetween($yesterday, $today)->sum('subtotal');
-        $pendapatanMingguIni = (int) Order::paidBetween($startOfWeek, $nextWeek)->sum('subtotal');
-        $pendapatanMingguLalu = (int) Order::paidBetween($startOfLastWeek, $startOfWeek)->sum('subtotal');
+        $pendapatanHariIni = (int) Order::paidBetween($today, $tomorrow)->selectRaw('COALESCE(SUM(subtotal - refunded_barang), 0) as agg')->value('agg');
+        $pendapatanKemarin = (int) Order::paidBetween($yesterday, $today)->selectRaw('COALESCE(SUM(subtotal - refunded_barang), 0) as agg')->value('agg');
+        $pendapatanMingguIni = (int) Order::paidBetween($startOfWeek, $nextWeek)->selectRaw('COALESCE(SUM(subtotal - refunded_barang), 0) as agg')->value('agg');
+        $pendapatanMingguLalu = (int) Order::paidBetween($startOfLastWeek, $startOfWeek)->selectRaw('COALESCE(SUM(subtotal - refunded_barang), 0) as agg')->value('agg');
 
         $pesananBaruHariIni = Order::where('created_at', '>=', $today)
             ->where('created_at', '<', $tomorrow)
             ->count();
         $produkStokMenipis = Product::lowStock()->count();
 
-        // Tren penjualan 30 hari terakhir (omset per hari, order paid, tanpa ongkir)
+        // Tren penjualan 30 hari terakhir (omset per hari, order paid, tanpa ongkir, dikurangi refund)
         $mulai = $today->copy()->subDays(29);
         $rows = Order::paidBetween($mulai, $tomorrow)
-            ->selectRaw('DATE(COALESCE(paid_at, created_at)) as tanggal, SUM(subtotal) as total')
+            ->selectRaw('DATE(COALESCE(paid_at, created_at)) as tanggal, SUM(subtotal - refunded_barang) as total')
             ->groupBy('tanggal')
             ->pluck('total', 'tanggal');
 

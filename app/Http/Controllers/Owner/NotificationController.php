@@ -33,6 +33,13 @@ class NotificationController extends Controller
             return redirect()->route('owner.transaksi.index', ['cari' => $order->order_code]);
         }
 
+        if ($type === 'refund') {
+            $refund = \App\Models\Refund::findOrFail($id);
+            OwnerNotifications::markRead($user, ['refund:'.$refund->id]);
+
+            return redirect()->route('owner.refund.show', $refund);
+        }
+
         $product = Product::findOrFail($id);
         OwnerNotifications::markRead($user, ['stock:'.$product->id.':'.$product->stok]);
 

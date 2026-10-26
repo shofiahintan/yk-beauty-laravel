@@ -1961,3 +1961,175 @@ button, .btn, [class*="-btn"], input[type="submit"], input[type="button"] {
   font-family: 'Poppins', sans-serif !important;
   font-style: normal !important;
 }
+
+/* ===== REFUND STYLES ===== */
+.pesanan-refund-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: var(--radius);
+  margin-bottom: 24px;
+  border-left: 5px solid transparent;
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(74, 18, 32, 0.05);
+}
+.pesanan-refund-box.refund-diajukan {
+  background: #FFFDF5;
+  border-left-color: #D97706;
+}
+.pesanan-refund-box.refund-disetujui {
+  background: #FDF1EF;
+  border-left-color: var(--maroon-accent);
+}
+.pesanan-refund-box.refund-ditolak {
+  background: #FDF2F4;
+  border-left-color: #BE123C;
+}
+.pesanan-refund-box.refund-selesai {
+  background: #F0FDF4;
+  border-left-color: #15803D;
+}
+.pesanan-refund-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.refund-diajukan .pesanan-refund-icon { background: #FEF3C7; color: #D97706; }
+.refund-disetujui .pesanan-refund-icon { background: var(--pink-200); color: var(--maroon-900); }
+.refund-ditolak .pesanan-refund-icon { background: #FFE4E6; color: #BE123C; }
+.refund-selesai .pesanan-refund-icon { background: #DCFCE7; color: #15803D; }
+
+.pesanan-refund-content { flex: 1; }
+.pesanan-refund-content h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--ink);
+}
+.pesanan-refund-content p {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+.pesanan-refund-meta {
+  font-size: 13px;
+  color: var(--maroon-900);
+  font-weight: 500;
+}
+.pesanan-refund-note {
+  font-size: 13px;
+  background: rgba(0,0,0,0.03);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-top: 6px;
+}
+.pesanan-refund-sub {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+
+/* Modal Refund Overlay & Content */
+.yk-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(46, 19, 25, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.yk-modal-dialog {
+  background: #fff;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  display: flex;
+  flex-col;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+  animation: ykModalFadeIn 0.25s ease-out;
+}
+@keyframes ykModalFadeIn {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.yk-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.yk-modal-header h3 {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--maroon-900);
+  margin: 0;
+}
+.yk-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+.yk-modal-close:hover {
+  background: var(--pink-50);
+  color: var(--ink);
+}
+.yk-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+.yk-form-group {
+  margin-bottom: 18px;
+}
+.yk-form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.yk-form-control {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 13.5px;
+  color: var(--ink);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.yk-form-control:focus {
+  outline: none;
+  border-color: var(--maroon-accent);
+  box-shadow: 0 0 0 3px rgba(140, 46, 60, 0.15);
+}
+.yk-form-hint {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+.yk-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: var(--cream);
+}

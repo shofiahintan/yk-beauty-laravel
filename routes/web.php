@@ -72,6 +72,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/riwayat-pesanan', [App\Http\Controllers\OrderController::class, 'history'])->name('riwayat');
     Route::post('/pesanan/{orderCode}/cancel', [App\Http\Controllers\OrderController::class, 'cancel'])->name('pesanan.cancel');
     Route::post('/pesanan/{orderCode}/batal', [App\Http\Controllers\OrderController::class, 'cancel'])->name('pesanan.batal');
+    Route::post('/pesanan/{orderCode}/refund', [App\Http\Controllers\RefundController::class, 'store'])->name('pesanan.refund');
+    Route::get('/pesanan/{orderCode}/refund/bukti/{index}', [App\Http\Controllers\RefundController::class, 'evidence'])->name('pesanan.refund.evidence');
 });
 
 // ===== ULASAN (auth required) =====
@@ -130,6 +132,12 @@ Route::prefix('owner')->name('owner.')->middleware(['auth', 'owner'])->group(fun
     Route::get('/transaksi/{order}', [App\Http\Controllers\Owner\OrderController::class, 'show'])->name('transaksi.show');
     Route::match(['put', 'patch'], '/transaksi/{order}', [App\Http\Controllers\Owner\OrderController::class, 'update'])->name('transaksi.update');
 
+    Route::get('/refund', [App\Http\Controllers\Owner\RefundController::class, 'index'])->name('refund.index');
+    Route::get('/refund/{refund}', [App\Http\Controllers\Owner\RefundController::class, 'show'])->name('refund.show');
+    Route::match(['post', 'patch'], '/refund/{refund}/setujui', [App\Http\Controllers\Owner\RefundController::class, 'approve'])->name('refund.approve');
+    Route::match(['post', 'patch'], '/refund/{refund}/tolak', [App\Http\Controllers\Owner\RefundController::class, 'reject'])->name('refund.reject');
+    Route::match(['post', 'patch'], '/refund/{refund}/selesai', [App\Http\Controllers\Owner\RefundController::class, 'complete'])->name('refund.complete');
+
     Route::get('/laporan', [App\Http\Controllers\Owner\ReportController::class, 'index'])->name('laporan.index');
     Route::get('/laporan/unduh', [App\Http\Controllers\Owner\ReportController::class, 'download'])->name('laporan.download');
     Route::get('/laporan/download', [App\Http\Controllers\Owner\ReportController::class, 'download'])->name('laporan.download_en');
@@ -140,7 +148,7 @@ Route::prefix('owner')->name('owner.')->middleware(['auth', 'owner'])->group(fun
 
     Route::get('/notifikasi', [App\Http\Controllers\Owner\NotificationController::class, 'index'])->name('notifikasi.index');
     Route::get('/notifikasi/buka/{type}/{id}', [App\Http\Controllers\Owner\NotificationController::class, 'open'])
-        ->whereIn('type', ['order', 'stock'])->whereNumber('id')->name('notifikasi.open');
+        ->whereIn('type', ['order', 'stock', 'refund'])->whereNumber('id')->name('notifikasi.open');
     Route::post('/notifikasi/baca-semua', [App\Http\Controllers\Owner\NotificationController::class, 'readAll'])->name('notifikasi.read-all');
 
     Route::get('/profil', [App\Http\Controllers\Owner\ProfileController::class, 'edit'])->name('profil.edit');

@@ -11,10 +11,10 @@ class OrderController extends Controller
 {
     public function show(Request $request)
     {
-        $orderId = $request->query('id');
+        $orderId = $request->query('id') ?? $request->query('order_id');
         $dbOrder = null;
         if ($orderId) {
-            $dbOrder = Order::with(['items.product', 'items.collection', 'items.review'])
+            $dbOrder = Order::with(['items.product', 'items.collection', 'items.review', 'refunds', 'statusHistories'])
                 ->where('order_code', $orderId)
                 ->where('user_id', auth()->id())
                 ->first();
@@ -22,8 +22,9 @@ class OrderController extends Controller
 
         return view('pesanan', [
             'products' => Product::catalogArray(),
-            'bundles' => \App\Models\Collection::catalogArray(),
-            'orderId' => $orderId,
+            'bundles'  => \App\Models\Collection::catalogArray(),
+            'orderId'  => $orderId,
+            'dbOrder'  => $dbOrder,
             'dbOrders' => $dbOrder ? [$dbOrder->toJsShape()] : [],
         ]);
     }

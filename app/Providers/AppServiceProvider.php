@@ -37,6 +37,9 @@ class AppServiceProvider extends ServiceProvider
 
             // Badge "Pesan" di sidebar — jumlah pesan pelanggan yang belum dibuka Owner.
             $view->with('ownerChatUnread', \App\Support\ChatService::unreadForOwner());
+
+            // Badge "Refund" di sidebar — jumlah pengajuan refund yang butuh persetujuan.
+            $view->with('ownerPendingRefunds', \App\Models\Refund::where('status', \App\Models\Refund::STATUS_DIAJUKAN)->count());
         });
     }
 }

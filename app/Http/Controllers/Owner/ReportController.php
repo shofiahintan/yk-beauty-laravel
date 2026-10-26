@@ -15,7 +15,7 @@ class ReportController extends Controller
     {
         [$mulai, $selesai] = $this->resolveRange($request);
 
-        $totalPendapatan = (int) Order::paidBetween($mulai, $selesai)->sum('subtotal');
+        $totalPendapatan = (int) Order::paidBetween($mulai, $selesai)->selectRaw('COALESCE(SUM(subtotal - refunded_barang), 0) as agg')->value('agg');
         $totalPesanan = Order::paidBetween($mulai, $selesai)->count();
         $rataRata = $totalPesanan > 0 ? intdiv($totalPendapatan, $totalPesanan) : 0;
         $pesananDibatalkan = Order::where('status', Order::STATUS_DIBATALKAN)
@@ -58,9 +58,11 @@ class ReportController extends Controller
 
         $callback = function () use ($orders) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Kode Pesanan', 'Tanggal', 'Pembeli', 'Metode Pembayaran', 'Status', 'Subtotal', 'Ongkir', 'Total']);
+            fputcsv($handle, ['Kode Pesanan', 'Tanggal', 'Pembeli', 'Metode Pembayaran', 'Status', 'Subtotal', 'Ongkir', 'Total', 'Refund', 'Pendapatan Bersih']);
 
             foreach ($orders as $order) {
+                $totalRefund = (int) ($order->refunded_barang + $order->refunded_ongkir);
+                $pendapatanBersih = max(0, (int) ($order->subtotal - $order->refunded_barang));
                 fputcsv($handle, [
                     $order->order_code,
                     ($order->paid_at ?? $order->created_at)->format('Y-m-d H:i'),
@@ -70,6 +72,8 @@ class ReportController extends Controller
                     $order->subtotal,
                     $order->shipping_cost,
                     $order->total,
+                    $totalRefund,
+                    $pendapatanBersih,
                 ]);
             }
 
@@ -91,7 +95,7 @@ class ReportController extends Controller
 
         $totals = $orders
             ->groupBy(fn ($o) => ($o->paid_at ?? $o->created_at)->timezone('Asia/Jakarta')->format($keyFormat))
-            ->map(fn ($group) => (int) $group->sum('subtotal'));
+            ->map(fn ($group) => (int) $group->sum(fn ($o) => $o->subtotal - $o->refunded_barang));
 
         $tren = [];
         $cursor = $perBulan ? $mulai->copy()->startOfMonth() : $mulai->copy()->startOfDay();

@@ -71,6 +71,12 @@
             {{ __('syarat_s5_title') }}
           </h2>
           <p>{{ __('syarat_s5_p1') }}</p>
+          <ul>
+            <li>{{ __('syarat_refund_rule_1') }}</li>
+            <li>{{ __('syarat_refund_rule_2') }}</li>
+            <li>{{ __('syarat_refund_rule_3') }}</li>
+            <li>{{ __('syarat_refund_rule_4') }}</li>
+          </ul>
           <p>{{ __('syarat_s5_p2') }}</p>
         </div>
 
