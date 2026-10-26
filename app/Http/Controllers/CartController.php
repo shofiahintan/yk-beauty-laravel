@@ -189,15 +189,10 @@ class CartController extends Controller
             'items.*.varian' => 'nullable|string|max:100',
             'items.*.ukuran' => 'nullable|string|max:100',
             'items.*.type' => 'nullable|string|in:product,bundle',
-            'merge' => 'nullable|boolean',
         ]);
 
         $userId = auth()->id();
-        $isMerge = (bool) ($validated['merge'] ?? false);
-
-        if (! $isMerge) {
-            CartItem::where('user_id', $userId)->delete();
-        }
+        CartItem::where('user_id', $userId)->delete();
 
         foreach ($validated['items'] as $it) {
             $type = $it['type'] ?? 'product';

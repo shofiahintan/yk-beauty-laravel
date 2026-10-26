@@ -35,6 +35,15 @@ class AuthenticatedSessionController extends Controller
             return redirect()->intended(route('owner.dashboard'));
         }
 
+        $redirect = $request->input('redirect');
+        if ($redirect && is_string($redirect)) {
+            $redirect = trim($redirect);
+            // Cegah open redirect: hanya terima path internal relatif (diawali '/' tapi bukan '//' atau '/\')
+            if (str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//') && ! str_starts_with($redirect, '/\\') && ! preg_match('/^[a-zA-Z][a-zA-Z0-9+.-]*:/', $redirect)) {
+                return redirect()->to($redirect);
+            }
+        }
+
         return redirect()->intended(RouteServiceProvider::HOME);
     }
 

@@ -47,6 +47,12 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   e.stopPropagation();
   const id = wish.dataset.id;
+  if (!ykIsLoggedIn()) {
+    if (typeof ykToggleWishlist === "function") {
+      ykToggleWishlist(id);
+    }
+    return;
+  }
   if (id && typeof ykToggleWishlist === "function") {
     const nowSaved = ykToggleWishlist(id);
     wish.classList.toggle('active', nowSaved);
@@ -61,12 +67,20 @@ document.addEventListener('click', (e) => {
 });
 
 // ===== Cart logic (event delegation, jalan di semua halaman) =====
-// .btn-cart dan .koleksi-add-btn -> masuk ke keranjang (database/localStorage via js/cart.js)
+// .btn-cart dan .koleksi-add-btn -> masuk ke keranjang
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.btn-cart, .koleksi-add-btn');
   if (btn && !btn.disabled && !btn.classList.contains('added')) {
     const id = btn.dataset.id;
     const type = btn.dataset.type || 'product';
+
+    if (!ykIsLoggedIn()) {
+      if (typeof ykAddToCart === "function") {
+        ykAddToCart(id, 1, null, null, type);
+      }
+      return;
+    }
+
     if (id && typeof ykAddToCart === "function") {
       ykAddToCart(id, 1, null, null, type);
     }

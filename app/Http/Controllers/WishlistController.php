@@ -84,25 +84,5 @@ class WishlistController extends Controller
 
         return $this->getWishlist();
     }
-
-    public function sync(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'items' => 'present|array',
-            'items.*' => 'string',
-        ]);
-
-        $userId = auth()->id();
-        foreach ($validated['items'] as $slug) {
-            $product = Product::where('slug', $slug)->where('is_active', true)->first();
-            if ($product) {
-                Wishlist::firstOrCreate([
-                    'user_id' => $userId,
-                    'product_id' => $product->id,
-                ]);
-            }
-        }
-
-        return $this->getWishlist();
-    }
 }
+

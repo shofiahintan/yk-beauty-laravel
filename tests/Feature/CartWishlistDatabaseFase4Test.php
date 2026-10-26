@@ -252,67 +252,100 @@ class CartWishlistDatabaseFase4Test extends TestCase
         $this->assertEquals(3, CartItem::where('user_id', $user->id)->first()->qty);
     }
 
-    public function test_localstorage_cart_and_wishlist_can_be_merged_into_database_cart(): void
+    public function test_guests_are_redirected_to_login_on_cart_wishlist_and_checkout_pages(): void
     {
-        $user = User::factory()->create();
-        $p1 = $this->createSampleProduct('serum-brightening', 50000);
-        $p2 = $this->createSampleProduct('toner-hydrating', 40000);
-        $bundle = $this->createSampleBundle('paket-lengkap', 100000);
+        $this->get('/keranjang')->assertRedirect(route('login'));
+        $this->get('/wishlist')->assertRedirect(route('login'));
+        $this->get('/checkout')->assertRedirect(route('login'));
+    }
 
-        // User sudah punya serum 1 di DB sebelumnya
-        CartItem::create([
-            'user_id' => $user->id,
-            'product_id' => $p1->id,
-            'qty' => 1,
-            'varian' => null,
-            'ukuran' => null,
-            'line_key' => CartItem::generateLineKey('product', $p1->id, null, null),
-        ]);
+    public function test_guest_ajax_requests_receive_401_unauthorized_on_cart_wishlist_and_checkout(): void
+    {
+        $this->getJson('/keranjang')->assertUnauthorized();
+        $this->getJson('/wishlist')->assertUnauthorized();
+        $this->getJson('/checkout')->assertUnauthorized();
+        $this->postJson('/checkout', [
+            'buyer' => ['nama' => 'Guest'],
+            'items' => [['id' => 'sample', 'qty' => 1]],
+        ])->assertUnauthorized();
+    }
 
-        // Payload localStorage yang dibawa tamu saat login
-        $localStorageCart = [
-            ['id' => 'serum-brightening', 'qty' => 2, 'varian' => null, 'ukuran' => null, 'type' => 'product'],
-            ['id' => 'toner-hydrating', 'qty' => 1, 'varian' => 'Original', 'ukuran' => '100ml', 'type' => 'product'],
-            ['id' => 'paket-lengkap', 'qty' => 1, 'varian' => null, 'ukuran' => null, 'type' => 'bundle'],
+    public function test_login_redirect_accepts_only_internal_paths_preventing_open_redirect(): void
+    {
+        $user = User::factory()->create(['password' => bcrypt('password123')]);
+
+        // Path internal valid: harus diterima dan di-redirect ke path tersebut
+        $validInternalPaths = [
+            '/keranjang',
+            '/wishlist',
+            '/checkout',
+            '/produk/serum-brightening?tab=ulasan',
+            '/paket-bundling/paket-glowing',
         ];
 
-        $response = $this->actingAs($user)->postJson('/cart/sync', [
-            'items' => $localStorageCart,
-            'merge' => true,
-        ]);
+        foreach ($validInternalPaths as $path) {
+            $response = $this->post('/login', [
+                'email' => $user->email,
+                'password' => 'password123',
+                'redirect' => $path,
+            ]);
+            $response->assertRedirect($path);
+            auth()->logout();
+        }
 
-        $response->assertOk();
+        // Open redirect berbahaya: harus ditolak dan dialihkan ke HOME default
+        $maliciousRedirects = [
+            'https://evil.com',
+            'http://attacker.com/steal-cookie',
+            '//evil.com',
+            '//evil.com/login',
+            '/\\evil.com',
+            '/\evil.com',
+            'javascript:alert(1)',
+        ];
 
-        // Serum harusnya bergabung: 1 (lama) + 2 (localStorage) = 3
-        $serumItem = CartItem::where('user_id', $user->id)->where('product_id', $p1->id)->first();
-        $this->assertNotNull($serumItem);
-        $this->assertEquals(3, $serumItem->qty);
+        foreach ($maliciousRedirects as $badUrl) {
+            $response = $this->post('/login', [
+                'email' => $user->email,
+                'password' => 'password123',
+                'redirect' => $badUrl,
+            ]);
+            $response->assertRedirect(\App\Providers\RouteServiceProvider::HOME);
+            auth()->logout();
+        }
+    }
 
-        // Toner dan Paket Lengkap juga masuk ke DB
+    public function test_authenticated_buyer_is_not_affected_and_can_access_cart_wishlist_and_checkout(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->createSampleProduct('serum-brightening', 50000);
+
+        // Buyer yang login dapat membuka halaman keranjang, wishlist, dan checkout
+        $this->actingAs($user)->get('/keranjang')->assertOk();
+        $this->actingAs($user)->get('/wishlist')->assertOk();
+        $this->actingAs($user)->get('/checkout')->assertOk();
+
+        // Operasi cart & wishlist berjalan normal
+        $this->actingAs($user)->postJson('/cart/add', [
+            'id' => $product->slug,
+            'qty' => 1,
+            'type' => 'product',
+        ])->assertOk();
+
+        $this->actingAs($user)->postJson('/wishlist/toggle', [
+            'id' => $product->slug,
+        ])->assertOk();
+
         $this->assertDatabaseHas('cart_items', [
             'user_id' => $user->id,
-            'product_id' => $p2->id,
+            'product_id' => $product->id,
             'qty' => 1,
-            'varian' => 'Original',
         ]);
 
-        $this->assertDatabaseHas('cart_items', [
+        $this->assertDatabaseHas('wishlists', [
             'user_id' => $user->id,
-            'collection_id' => $bundle->id,
-            'qty' => 1,
+            'product_id' => $product->id,
         ]);
-
-        // Merge Wishlist
-        $localStorageWishlist = ['serum-brightening', 'toner-hydrating'];
-        $wishResponse = $this->actingAs($user)->postJson('/wishlist/sync', [
-            'items' => $localStorageWishlist,
-        ]);
-
-        $wishResponse->assertOk()
-            ->assertJsonPath('wishlist.0', 'serum-brightening')
-            ->assertJsonPath('wishlist.1', 'toner-hydrating');
-
-        $this->assertEquals(2, Wishlist::where('user_id', $user->id)->count());
     }
 
     public function test_cart_and_wishlist_user_a_is_isolated_and_invisible_to_user_b(): void
@@ -562,7 +595,6 @@ class CartWishlistDatabaseFase4Test extends TestCase
 
         $this->postJson('/wishlist/toggle', ['id' => 'sample'])->assertUnauthorized();
         $this->postJson('/wishlist/remove', ['id' => 'sample'])->assertUnauthorized();
-        $this->postJson('/wishlist/sync', ['items' => []])->assertUnauthorized();
         $this->getJson('/wishlist-items')->assertUnauthorized();
     }
 }

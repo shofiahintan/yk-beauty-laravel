@@ -37,14 +37,11 @@ Route::get('/lang/{locale}', function (\Illuminate\Http\Request $request, $local
     return redirect()->back();
 })->name('lang.switch');
 
-// ===== WISHLIST (bisa diakses tanpa login, data di localStorage) =====
-Route::get('/wishlist', [App\Http\Controllers\WishlistController::class, 'index'])->name('wishlist');
-
-// ===== KERANJANG (bisa diakses tanpa login, data di localStorage) =====
-Route::get('/keranjang', [App\Http\Controllers\CartController::class, 'index'])->name('keranjang');
-
-// ===== CART & WISHLIST (AUTH / DATABASE SYNC) =====
+// ===== CART & WISHLIST (AUTH REQUIRED) =====
 Route::middleware('auth')->group(function () {
+    Route::get('/wishlist', [App\Http\Controllers\WishlistController::class, 'index'])->name('wishlist');
+    Route::get('/keranjang', [App\Http\Controllers\CartController::class, 'index'])->name('keranjang');
+
     Route::get('/cart', [App\Http\Controllers\CartController::class, 'getCart'])->name('cart.get');
     Route::post('/cart/add', [App\Http\Controllers\CartController::class, 'add'])->name('cart.add');
     Route::post('/cart/set-qty', [App\Http\Controllers\CartController::class, 'setQty'])->name('cart.setQty');
@@ -55,7 +52,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/wishlist-items', [App\Http\Controllers\WishlistController::class, 'getWishlist'])->name('wishlist.get');
     Route::post('/wishlist/toggle', [App\Http\Controllers\WishlistController::class, 'toggle'])->name('wishlist.toggle');
     Route::post('/wishlist/remove', [App\Http\Controllers\WishlistController::class, 'remove'])->name('wishlist.remove');
-    Route::post('/wishlist/sync', [App\Http\Controllers\WishlistController::class, 'sync'])->name('wishlist.sync');
 });
 
 // ===== CHECKOUT =====

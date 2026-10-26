@@ -169,6 +169,12 @@ document.addEventListener('DOMContentLoaded', () => {
     wishBtn.classList.add('active');
   }
   wishBtn.addEventListener('click', function () {
+    if (!ykIsLoggedIn()) {
+      if (typeof ykToggleWishlist === "function") {
+        ykToggleWishlist(produk.id);
+      }
+      return;
+    }
     if (typeof ykToggleWishlist === "function") {
       const nowSaved = ykToggleWishlist(produk.id);
       this.classList.toggle('active', nowSaved);
@@ -183,6 +189,12 @@ document.addEventListener('DOMContentLoaded', () => {
     detailAddBtn.textContent = (typeof detailI18n !== "undefined" && detailI18n.outOfStock) ? detailI18n.outOfStock : 'Habis';
   } else {
     detailAddBtn.addEventListener('click', function () {
+      if (!ykIsLoggedIn()) {
+        if (typeof ykAddToCart === "function") {
+          ykAddToCart(produk.id, qty, varianAktif, ukuranAktif);
+        }
+        return;
+      }
       if (typeof ykAddToCart === "function") {
         ykAddToCart(produk.id, qty, varianAktif, ukuranAktif);
       }
