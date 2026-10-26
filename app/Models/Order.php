@@ -97,7 +97,11 @@ class Order extends Model
 
     public function isPaid(): bool
     {
-        return $this->payment_status === self::PAYMENT_PAID;
+        return in_array($this->payment_status, [
+            self::PAYMENT_PAID,
+            self::PAYMENT_PARTIAL_REFUND,
+            self::PAYMENT_REFUNDED,
+        ], true);
     }
 
     /**

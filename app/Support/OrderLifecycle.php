@@ -24,8 +24,8 @@ class OrderLifecycle
             $order = Order::lockForUpdate()->findOrFail($order->id);
 
             if (($transactionStatus === 'capture' && $fraudStatus === 'accept') || $transactionStatus === 'settlement') {
-                // Idempotent: kalau sudah paid, skip
-                if ($order->payment_status === Order::PAYMENT_PAID) {
+                // Idempotent: kalau sudah paid, partial_refund, atau refunded, skip
+                if ($order->isPaid()) {
                     return;
                 }
 
@@ -63,8 +63,8 @@ class OrderLifecycle
                 return;
 
             } elseif (in_array($transactionStatus, ['cancel', 'deny', 'expire'], true)) {
-                if ($order->payment_status === Order::PAYMENT_PAID) {
-                    return; // Sudah lunas, abaikan
+                if ($order->isPaid()) {
+                    return; // Sudah lunas atau direfund, abaikan
                 }
 
                 $newPaymentStatus = $transactionStatus === 'expire'

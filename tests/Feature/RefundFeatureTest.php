@@ -776,4 +776,80 @@ class RefundFeatureTest extends TestCase
         $this->assertStringContainsString('30000', $csvContent);
         $this->assertStringContainsString('70000', $csvContent);
     }
+
+    // ──────────────────────────────────────────────
+    // 12. Idempotensi Settlement pada Pesanan Refund
+    // ──────────────────────────────────────────────
+
+    public function test_resent_midtrans_settlement_does_not_alter_partially_or_fully_refunded_order(): void
+    {
+        $customer = $this->createCustomer();
+        $originalPaidAt = Carbon::now()->subHours(10)->startOfSecond();
+
+        // 1. Pesanan partial_refund
+        $orderPartial = $this->createPaidOrder($customer, [
+            'status' => Order::STATUS_DIKIRIM,
+            'payment_status' => Order::PAYMENT_PARTIAL_REFUND,
+            'paid_at' => $originalPaidAt,
+            'refunded_barang' => 30000,
+            'refunded_ongkir' => 15000,
+        ]);
+
+        OrderLifecycle::applyMidtransStatus($orderPartial, 'settlement', null, 'gopay');
+
+        $orderPartial->refresh();
+        $this->assertEquals(Order::PAYMENT_PARTIAL_REFUND, $orderPartial->payment_status);
+        $this->assertEquals(Order::STATUS_DIKIRIM, $orderPartial->status);
+        $this->assertEquals(30000, $orderPartial->refunded_barang);
+        $this->assertEquals(15000, $orderPartial->refunded_ongkir);
+        $this->assertEquals($originalPaidAt->timestamp, $orderPartial->paid_at->timestamp);
+
+        // 2. Pesanan fully refunded
+        $orderRefunded = $this->createPaidOrder($customer, [
+            'status' => Order::STATUS_SELESAI,
+            'payment_status' => Order::PAYMENT_REFUNDED,
+            'paid_at' => $originalPaidAt,
+            'refunded_barang' => 100000,
+            'refunded_ongkir' => 15000,
+        ]);
+
+        OrderLifecycle::applyMidtransStatus($orderRefunded, 'settlement', null, 'gopay');
+
+        $orderRefunded->refresh();
+        $this->assertEquals(Order::PAYMENT_REFUNDED, $orderRefunded->payment_status);
+        $this->assertEquals(Order::STATUS_SELESAI, $orderRefunded->status);
+        $this->assertEquals(100000, $orderRefunded->refunded_barang);
+        $this->assertEquals(15000, $orderRefunded->refunded_ongkir);
+        $this->assertEquals($originalPaidAt->timestamp, $orderRefunded->paid_at->timestamp);
+    }
+
+    // ──────────────────────────────────────────────
+    // 13. Pesanan Dikirim yang Direfund Sebagian Bisa Diselesaikan
+    // ──────────────────────────────────────────────
+
+    public function test_owner_can_update_dikirim_order_to_selesai_when_partially_refunded(): void
+    {
+        $owner = $this->createOwner();
+        $customer = $this->createCustomer();
+
+        $order = $this->createPaidOrder($customer, [
+            'status' => Order::STATUS_DIKIRIM,
+            'payment_status' => Order::PAYMENT_PARTIAL_REFUND,
+            'kurir' => 'JNE',
+            'nomor_resi' => 'JNE12345678',
+            'refunded_barang' => 25000,
+            'refunded_ongkir' => 0,
+        ]);
+
+        $response = $this->actingAs($owner)
+            ->put("/owner/transaksi/{$order->id}", [
+                'status' => Order::STATUS_SELESAI,
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
+
+        $order->refresh();
+        $this->assertEquals(Order::STATUS_SELESAI, $order->status);
+    }
 }
